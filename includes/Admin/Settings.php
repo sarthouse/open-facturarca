@@ -33,25 +33,23 @@ class Settings {
      * Registra el menú principal y submenús en la barra lateral de WordPress
      */
     public static function add_sidebar_menu() {
-        // Menú principal propio con ícono de comprobante
         add_menu_page(
             __('Open FacturARCA', 'open-facturarca'),
             __('Facturación ARCA', 'open-facturarca'),
             'manage_woocommerce',
             'open-facturarca',
-            [__CLASS__, 'render_sidebar_page'],
+            [__CLASS__, 'render_standalone_page'],
             'dashicons-media-spreadsheet',
             56
         );
 
-        // Submenús directos para acceso rápido
         add_submenu_page(
             'open-facturarca',
             __('Empresas Emisoras', 'open-facturarca'),
             __('Empresas', 'open-facturarca'),
             'manage_woocommerce',
             'open-facturarca',
-            [__CLASS__, 'render_sidebar_page']
+            [__CLASS__, 'render_standalone_page']
         );
 
         add_submenu_page(
@@ -59,7 +57,8 @@ class Settings {
             __('Generador de Certificados', 'open-facturarca'),
             __('Certificados y CSR', 'open-facturarca'),
             'manage_woocommerce',
-            'admin.php?page=wc-settings&tab=arca_invoicing&section=cert_tool'
+            'open-facturarca-cert-tool',
+            [__CLASS__, 'render_standalone_page']
         );
 
         add_submenu_page(
@@ -67,7 +66,8 @@ class Settings {
             __('Estadísticas y Libros', 'open-facturarca'),
             __('Estadísticas e IVA', 'open-facturarca'),
             'manage_woocommerce',
-            'admin.php?page=wc-settings&tab=arca_invoicing&section=reports'
+            'open-facturarca-reports',
+            [__CLASS__, 'render_standalone_page']
         );
 
         add_submenu_page(
@@ -75,14 +75,83 @@ class Settings {
             __('Ajustes de Automatización', 'open-facturarca'),
             __('Ajustes', 'open-facturarca'),
             'manage_woocommerce',
-            'admin.php?page=wc-settings&tab=arca_invoicing&section=automation'
+            'open-facturarca-automation',
+            [__CLASS__, 'render_standalone_page']
+        );
+
+        add_submenu_page(
+            'open-facturarca',
+            __('Tutorial ARCA', 'open-facturarca'),
+            __('Tutorial', 'open-facturarca'),
+            'manage_woocommerce',
+            'open-facturarca-guide',
+            [__CLASS__, 'render_standalone_page']
         );
     }
 
-    public static function render_sidebar_page() {
-        // Redirigir a la pestaña nativa de WooCommerce o renderizarla directamente
-        wp_safe_redirect(admin_url('admin.php?page=wc-settings&tab=arca_invoicing'));
-        exit;
+    /**
+     * Renderizado limpio sin envoltorio de formulario de WooCommerce
+     */
+    public static function render_standalone_page() {
+        $page = isset($_GET['page']) ? sanitize_text_field($_GET['page']) : 'open-facturarca';
+        $section_map = [
+            'open-facturarca'            => 'companies',
+            'open-facturarca-cert-tool'  => 'cert_tool',
+            'open-facturarca-reports'    => 'reports',
+            'open-facturarca-automation' => 'automation',
+            'open-facturarca-guide'      => 'guide',
+        ];
+        $current_section = isset($_GET['section']) ? sanitize_text_field($_GET['section']) : ($section_map[$page] ?? 'companies');
+
+        ?>
+        <div class="wrap open-facturarca-admin">
+            <div style="margin: 15px 0 20px;">
+                <img src="<?php echo esc_url(OPEN_FACTURARCA_URL . 'assets/logo.svg'); ?>" alt="Open FacturARCA" style="height: 48px; width: auto; display: block;">
+            </div>
+
+            <nav class="nav-tab-wrapper" style="margin-bottom: 20px;">
+                <a href="<?php echo esc_url(admin_url('admin.php?page=open-facturarca&section=companies')); ?>" class="nav-tab <?php echo $current_section === 'companies' ? 'nav-tab-active' : ''; ?>">
+                    Empresas Emisoras
+                </a>
+                <a href="<?php echo esc_url(admin_url('admin.php?page=open-facturarca-cert-tool&section=cert_tool')); ?>" class="nav-tab <?php echo $current_section === 'cert_tool' ? 'nav-tab-active' : ''; ?>">
+                    Generador de Clave y CSR
+                </a>
+                <a href="<?php echo esc_url(admin_url('admin.php?page=open-facturarca-automation&section=automation')); ?>" class="nav-tab <?php echo $current_section === 'automation' ? 'nav-tab-active' : ''; ?>">
+                    Ajustes de Automatización
+                </a>
+                <a href="<?php echo esc_url(admin_url('admin.php?page=open-facturarca-reports&section=reports')); ?>" class="nav-tab <?php echo $current_section === 'reports' ? 'nav-tab-active' : ''; ?>">
+                    Estadísticas y Libros Contables
+                </a>
+                <a href="<?php echo esc_url(admin_url('admin.php?page=open-facturarca-guide&section=guide')); ?>" class="nav-tab <?php echo $current_section === 'guide' ? 'nav-tab-active' : ''; ?>">
+                    Tutorial ARCA / AFIP
+                </a>
+            </nav>
+
+            <?php
+            if ($current_section === 'companies') {
+                self::render_companies_view();
+            } elseif ($current_section === 'cert_tool') {
+                self::render_cert_tool_view();
+            } elseif ($current_section === 'reports') {
+                self::render_reports_view();
+            } elseif ($current_section === 'guide') {
+                self::render_tutorial_view();
+            } else {
+                ?>
+                <div style="background: #fff; padding: 20px; border: 1px solid #ccd0d4; border-radius: 4px; max-width: 800px;">
+                    <form method="post" action="options.php">
+                        <?php
+                        settings_fields('open_facturarca_automation_group');
+                        woocommerce_admin_fields(self::get_automation_settings());
+                        submit_button(__('Guardar Ajustes', 'open-facturarca'));
+                        ?>
+                    </form>
+                </div>
+                <?php
+            }
+            ?>
+        </div>
+        <?php
     }
 
     public static function add_settings_tab($settings_tabs) {
@@ -126,17 +195,6 @@ class Settings {
             self::render_tutorial_view();
         } else {
             woocommerce_admin_fields(self::get_automation_settings());
-        }
-
-        // Ocultar el botón rojo global de WooCommerce "Guardar los cambios" en pestañas que no lo necesitan
-        if ($current_section !== 'automation') {
-            ?>
-            <style type="text/css">
-                p.submit, .woocommerce-save-button, button[name="save"] {
-                    display: none !important;
-                }
-            </style>
-            <?php
         }
     }
 
@@ -532,7 +590,7 @@ class Settings {
             <h3>Generador Automático de Clave Privada y CSR</h3>
             <p>Este asistente genera directamente la clave criptográfica y la solicitud de certificado (CSR) para subir al portal de ARCA/AFIP sin usar comandos de terminal.</p>
 
-            <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" onsubmit="window.onbeforeunload = null;">
+            <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
                 <input type="hidden" name="action" value="wc_arca_generate_cert_request">
                 <?php wp_nonce_field('wc_arca_gen_cert_nonce'); ?>
 
@@ -551,17 +609,6 @@ class Settings {
                     <button type="submit" class="button button-primary">Generar Clave y CSR Ahora</button>
                 </p>
             </form>
-
-            <script type="text/javascript">
-            jQuery(document).ready(function($) {
-                // Desactivar alerta de "abandonar el sitio" en esta pestaña
-                window.onbeforeunload = null;
-                $(window).off('beforeunload');
-                if (typeof $.fn.dirtyForms !== 'undefined') {
-                    $('form').dirtyForms('setClean');
-                }
-            });
-            </script>
 
             <hr style="margin: 25px 0;">
 
