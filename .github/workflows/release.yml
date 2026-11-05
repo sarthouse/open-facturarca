@@ -1,0 +1,29 @@
+name: Release Open FacturARCA Zip
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    name: Create Release Asset
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Create Zip Package
+        run: |
+          mkdir -p build/open-facturarca
+          rsync -rc --exclude='.git*' --exclude='.github' --exclude='build' ./ build/open-facturarca/
+          cd build
+          zip -r ../open-facturarca.zip open-facturarca
+
+      - name: Upload Release Asset
+        uses: softprops/action-gh-release@v1
+        with:
+          files: open-facturarca.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
