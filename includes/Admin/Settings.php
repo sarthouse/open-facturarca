@@ -8,12 +8,9 @@ defined('ABSPATH') || exit;
 
 class Settings {
     public static function init() {
-        add_filter('woocommerce_settings_tabs_array', [__CLASS__, 'add_settings_tab'], 50);
-        add_action('woocommerce_settings_tabs_arca_invoicing', [__CLASS__, 'render_settings_tab']);
-        add_action('woocommerce_update_options_arca_invoicing', [__CLASS__, 'save_settings']);
         add_action('admin_enqueue_scripts', [__CLASS__, 'enqueue_media_uploader']);
 
-        // Añadir menú propio en la barra lateral de WordPress (debajo de WooCommerce)
+        // Menú principal propio en la barra lateral de WordPress
         add_action('admin_menu', [__CLASS__, 'add_sidebar_menu'], 60);
 
         // Handlers para acciones de certificados y empresas
@@ -21,6 +18,7 @@ class Settings {
         add_action('admin_post_wc_arca_save_company', [__CLASS__, 'handle_save_company']);
         add_action('admin_post_wc_arca_delete_company', [__CLASS__, 'handle_delete_company']);
         add_action('admin_post_wc_arca_upload_certificate', [__CLASS__, 'handle_upload_certificate']);
+        add_action('admin_post_wc_arca_save_automation', [__CLASS__, 'handle_save_automation']);
     }
 
     public static function enqueue_media_uploader($hook) {
@@ -137,65 +135,114 @@ class Settings {
             } elseif ($current_section === 'guide') {
                 self::render_tutorial_view();
             } else {
-                ?>
-                <div style="background: #fff; padding: 20px; border: 1px solid #ccd0d4; border-radius: 4px; max-width: 800px;">
-                    <form method="post" action="options.php">
-                        <?php
-                        settings_fields('open_facturarca_automation_group');
-                        woocommerce_admin_fields(self::get_automation_settings());
-                        submit_button(__('Guardar Ajustes', 'open-facturarca'));
-                        ?>
-                    </form>
-                </div>
-                <?php
+                self::render_automation_view();
             }
             ?>
         </div>
         <?php
     }
 
-    public static function add_settings_tab($settings_tabs) {
-        $settings_tabs['arca_invoicing'] = __('Open FacturARCA', 'open-facturarca');
-        return $settings_tabs;
+    private static function render_automation_view() {
+        $companies = CompanyManager::get_companies();
+        $default_company_id = get_option('wc_arca_default_company_id', 'default');
+        $auto_issue = get_option('wc_arca_auto_issue', 'yes');
+        $trigger_status = get_option('wc_arca_trigger_status', 'completed');
+        $auto_credit_note = get_option('wc_arca_auto_credit_note', 'yes');
+        $invoice_copies = get_option('wc_arca_invoice_copies', 'original');
+        $slip_copies = get_option('wc_arca_slip_copies', 'duplicado');
+        ?>
+        <div style="background: #fff; padding: 25px; border: 1px solid #ccd0d4; border-radius: 4px; max-width: 850px;">
+            <h3 style="margin-top: 0;">Ajustes de Automatización e Impresión</h3>
+            <p style="color: #666;">Configure el comportamiento de emisión automática y la cantidad de copias al generar comprobantes.</p>
+
+            <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
+                <input type="hidden" name="action" value="wc_arca_save_automation">
+                <?php wp_nonce_field('wc_arca_save_automation_nonce'); ?>
+
+                <table class="form-table">
+                    <tr>
+                        <th><label>Empresa Emisora por Defecto</label></th>
+                        <td>
+                            <select name="default_company_id" class="regular-text">
+                                <?php foreach ($companies as $id => $c): ?>
+                                    <option value="<?php echo esc_attr($id); ?>" <?php selected($id, $default_company_id); ?>>
+                                        <?php echo esc_html($c['name']); ?> (CUIT: <?php echo esc_html($c['cuit']); ?>)
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <p class="description">Empresa utilizada para la emisión automática de pedidos.</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th><label>Facturación Automática</label></th>
+                        <td>
+                            <label>
+                                <input type="checkbox" name="auto_issue" value="yes" <?php checked($auto_issue, 'yes'); ?>>
+                                Emitir factura de forma automática al cambiar el estado del pedido.
+                            </label>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th><label>Estado disparador de Factura</label></th>
+                        <td>
+                            <select name="trigger_status">
+                                <option value="completed" <?php selected($trigger_status, 'completed'); ?>>Completado (Completed)</option>
+                                <option value="processing" <?php selected($trigger_status, 'processing'); ?>>Procesando (Processing)</option>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th><label>Nota de Crédito Automática</label></th>
+                        <td>
+                            <label>
+                                <input type="checkbox" name="auto_credit_note" value="yes" <?php checked($auto_credit_note, 'yes'); ?>>
+                                Emitir automáticamente una Nota de Crédito por el monto exacto devuelto al crear un reembolso en WooCommerce.
+                            </label>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th><label>Copias de Factura / Nota de Crédito</label></th>
+                        <td>
+                            <select name="invoice_copies">
+                                <option value="original" <?php selected($invoice_copies, 'original'); ?>>Solo Original (1 página)</option>
+                                <option value="duplicado" <?php selected($invoice_copies, 'duplicado'); ?>>Original y Duplicado (2 páginas)</option>
+                                <option value="triplicado" <?php selected($invoice_copies, 'triplicado'); ?>>Original, Duplicado y Triplicado (3 páginas)</option>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th><label>Copias del Remito de Entrega</label></th>
+                        <td>
+                            <select name="slip_copies">
+                                <option value="original" <?php selected($slip_copies, 'original'); ?>>Solo Original (1 página)</option>
+                                <option value="duplicado" <?php selected($slip_copies, 'duplicado'); ?>>Original y Duplicado (Recomendado)</option>
+                                <option value="triplicado" <?php selected($slip_copies, 'triplicado'); ?>>Original, Duplicado y Triplicado</option>
+                            </select>
+                        </td>
+                    </tr>
+                </table>
+
+                <p style="margin-top: 20px;">
+                    <button type="submit" class="button button-primary">Guardar Ajustes</button>
+                </p>
+            </form>
+        </div>
+        <?php
     }
 
-    public static function render_settings_tab() {
-        $current_section = isset($_GET['section']) ? sanitize_text_field($_GET['section']) : 'companies';
-        $logo_url = OPEN_FACTURARCA_URL . 'assets/logo.svg';
-        ?>
-        <div style="margin: 15px 0 25px;">
-            <img src="<?php echo esc_url($logo_url); ?>" alt="Open FacturARCA" style="height: 52px; width: auto; display: block;">
-        </div>
-        <nav class="nav-tab-wrapper woo-nav-tab-wrapper" style="margin-bottom: 20px;">
-            <a href="<?php echo esc_url(admin_url('admin.php?page=wc-settings&tab=arca_invoicing&section=companies')); ?>" class="nav-tab <?php echo $current_section === 'companies' ? 'nav-tab-active' : ''; ?>">
-                Empresas Emisoras (Multi-empresa)
-            </a>
-            <a href="<?php echo esc_url(admin_url('admin.php?page=wc-settings&tab=arca_invoicing&section=cert_tool')); ?>" class="nav-tab <?php echo $current_section === 'cert_tool' ? 'nav-tab-active' : ''; ?>">
-                Generador de Clave y CSR
-            </a>
-            <a href="<?php echo esc_url(admin_url('admin.php?page=wc-settings&tab=arca_invoicing&section=automation')); ?>" class="nav-tab <?php echo $current_section === 'automation' ? 'nav-tab-active' : ''; ?>">
-                Ajustes de Automatización
-            </a>
-            <a href="<?php echo esc_url(admin_url('admin.php?page=wc-settings&tab=arca_invoicing&section=reports')); ?>" class="nav-tab <?php echo $current_section === 'reports' ? 'nav-tab-active' : ''; ?>">
-                Estadísticas y Libros Contables
-            </a>
-            <a href="<?php echo esc_url(admin_url('admin.php?page=wc-settings&tab=arca_invoicing&section=guide')); ?>" class="nav-tab <?php echo $current_section === 'guide' ? 'nav-tab-active' : ''; ?>">
-                Tutorial ARCA / AFIP
-            </a>
-        </nav>
-        <?php
+    public static function handle_save_automation() {
+        if (!current_user_can('manage_woocommerce')) wp_die('No autorizado');
+        check_admin_referer('wc_arca_save_automation_nonce');
 
-        if ($current_section === 'companies') {
-            self::render_companies_view();
-        } elseif ($current_section === 'cert_tool') {
-            self::render_cert_tool_view();
-        } elseif ($current_section === 'reports') {
-            self::render_reports_view();
-        } elseif ($current_section === 'guide') {
-            self::render_tutorial_view();
-        } else {
-            woocommerce_admin_fields(self::get_automation_settings());
-        }
+        update_option('wc_arca_default_company_id', sanitize_key($_POST['default_company_id'] ?? 'default'));
+        update_option('wc_arca_auto_issue', isset($_POST['auto_issue']) ? 'yes' : 'no');
+        update_option('wc_arca_trigger_status', sanitize_text_field($_POST['trigger_status'] ?? 'completed'));
+        update_option('wc_arca_auto_credit_note', isset($_POST['auto_credit_note']) ? 'yes' : 'no');
+        update_option('wc_arca_invoice_copies', sanitize_text_field($_POST['invoice_copies'] ?? 'original'));
+        update_option('wc_arca_slip_copies', sanitize_text_field($_POST['slip_copies'] ?? 'duplicado'));
+
+        wp_redirect(admin_url('admin.php?page=open-facturarca-automation&section=automation'));
+        exit;
     }
 
     public static function get_automation_settings() {

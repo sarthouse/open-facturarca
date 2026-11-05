@@ -25,12 +25,46 @@ define('OPEN_FACTURARCA_URL', plugin_dir_url(__FILE__));
 // Comprobar requerimientos antes de inicializar
 add_action('plugins_loaded', 'open_facturarca_init_plugin');
 
+// Estilos nativos de Dashicons para los botones de acción en la tabla de pedidos
+add_action('admin_head', 'open_facturarca_admin_order_buttons_css');
+
+function open_facturarca_admin_order_buttons_css() {
+    $screen = get_current_screen();
+    if (!$screen || ($screen->id !== 'edit-shop_order' && $screen->id !== 'woocommerce_page_wc-orders')) {
+        return;
+    }
+    ?>
+    <style type="text/css">
+        .wc-action-button-arca-invoice::after {
+            font-family: dashicons !important;
+            content: "\f498" !important; /* Dashicon Documento / Archivo */
+            color: #2271b1 !important;
+        }
+        .wc-action-button-arca-slip::after {
+            font-family: dashicons !important;
+            content: "\f480" !important; /* Dashicon Archivo / Caja despacho */
+            color: #6c757d !important;
+        }
+        .wc-action-button-arca-sales::after {
+            font-family: dashicons !important;
+            content: "\f175" !important; /* Dashicon Formulario / Lista de venta */
+            color: #135e96 !important;
+        }
+        .wc-action-button-arca-invoice:hover::after,
+        .wc-action-button-arca-slip:hover::after,
+        .wc-action-button-arca-sales:hover::after {
+            color: #135e96 !important;
+        }
+    </style>
+    <?php
+}
+
 // Añadir enlaces útiles en la lista de plugins (Ajustes y Ver Documentación)
 add_filter('plugin_action_links_' . plugin_basename(__FILE__), 'open_facturarca_action_links');
 add_filter('plugin_row_meta', 'open_facturarca_row_meta', 10, 2);
 
 function open_facturarca_action_links($links) {
-    $settings_link = '<a href="' . esc_url(admin_url('admin.php?page=wc-settings&tab=arca_invoicing')) . '">' . __('Ajustes', 'open-facturarca') . '</a>';
+    $settings_link = '<a href="' . esc_url(admin_url('admin.php?page=open-facturarca')) . '">' . __('Ajustes', 'open-facturarca') . '</a>';
     array_unshift($links, $settings_link);
     return $links;
 }

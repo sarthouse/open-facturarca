@@ -16,7 +16,7 @@ class PdfHandler {
     public static function add_admin_order_pdf_button($order) {
         if ($order->get_meta('_arca_cae')) {
             $url = self::get_download_url($order->get_id());
-            echo '<a class="button wc-action-button wc-action-button-invoice" href="' . esc_url($url) . '" target="_blank" title="' . esc_attr__('Ver Factura Electrónica', 'open-facturarca') . '">Factura</a>';
+            echo '<a class="button wc-action-button wc-action-button-arca-invoice" href="' . esc_url($url) . '" target="_blank" title="' . esc_attr__('Ver Factura Electrónica (PDF)', 'open-facturarca') . '"></a>';
         }
     }
 

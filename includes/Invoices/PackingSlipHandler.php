@@ -13,7 +13,7 @@ class PackingSlipHandler {
 
     public static function add_admin_order_slip_button($order) {
         $url = self::get_download_url($order->get_id());
-        echo '<a class="button wc-action-button" href="' . esc_url($url) . '" target="_blank" title="' . esc_attr__('Ver Remito de Entrega (Letra X)', 'open-facturarca') . '">Remito</a>';
+        echo '<a class="button wc-action-button wc-action-button-arca-slip" href="' . esc_url($url) . '" target="_blank" title="' . esc_attr__('Ver Remito de Entrega (PDF)', 'open-facturarca') . '"></a>';
     }
 
     public static function get_download_url($order_id) {

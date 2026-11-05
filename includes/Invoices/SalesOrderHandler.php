@@ -15,7 +15,7 @@ class SalesOrderHandler {
 
     public static function add_admin_order_sales_button($order) {
         $url = self::get_download_url($order->get_id());
-        echo '<a class="button wc-action-button" href="' . esc_url($url) . '" target="_blank" title="' . esc_attr__('Ver Nota de Pedido / Venta (PDF)', 'open-facturarca') . '">Nota de Pedido</a>';
+        echo '<a class="button wc-action-button wc-action-button-arca-sales" href="' . esc_url($url) . '" target="_blank" title="' . esc_attr__('Ver Nota de Pedido / Venta (PDF)', 'open-facturarca') . '"></a>';
     }
 
     public static function add_customer_sales_button($order) {
