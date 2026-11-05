@@ -166,11 +166,21 @@ class PdfHandler {
             $pdf->text(500, 32, $copy_name, 9, true);
 
             // Encabezado Emisor (Izquierda)
-            $pdf->text(30, 40, substr($nombre_emisor, 0, 32), 13, true);
-            $pdf->text(30, 53, 'CUIT: ' . $cuit_emisor, 9, false);
-            $pdf->text(30, 64, 'Condicion IVA: ' . ucfirst($cond_emisor), 9, false);
-            $pdf->text(30, 75, 'Ingresos Brutos: ' . $iibb_emisor, 9, false);
-            $pdf->text(30, 86, 'Inicio de Actividades: ' . $fch_inicio, 9, false);
+            $logo_url = $company['logo_url'] ?? '';
+            $start_y = 40;
+
+            if (!empty($logo_url)) {
+                $pdf->text(30, 36, '[' . substr($nombre_emisor, 0, 28) . ']', 10, true);
+                $start_y = 50;
+            } else {
+                $pdf->text(30, $start_y, substr($nombre_emisor, 0, 32), 13, true);
+                $start_y += 13;
+            }
+
+            $pdf->text(30, $start_y, 'CUIT: ' . $cuit_emisor, 9, false);
+            $pdf->text(30, $start_y + 11, 'Condicion IVA: ' . ucfirst($cond_emisor), 9, false);
+            $pdf->text(30, $start_y + 22, 'Ingresos Brutos: ' . $iibb_emisor, 9, false);
+            $pdf->text(30, $start_y + 33, 'Inicio de Actividades: ' . $fch_inicio, 9, false);
 
             // Encabezado Comprobante (Derecha)
             $pdf->text(340, 40, $label, 13, true);

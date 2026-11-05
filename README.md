@@ -33,7 +33,7 @@ La mayoría de las integraciones de facturación para WooCommerce en Argentina e
   * **Autoconsulta a Padrón ARCA:** Si ingresa un CUIT (11 dígitos), el plugin consulta en tiempo real el servicio oficial `ws_sr_constancia_inscripcion` de ARCA y detecta si es Responsable Inscripto, Monotributista o Exento, recuperando además la Razón Social.
   * Si ingresa un DNI (7 u 8 dígitos), se clasifica automáticamente como Consumidor Final.
   * Emisión automática de **Factura A, B o C** según la condición fiscal del emisor y receptor.
-* 🏢 **Arquitectura Multi-empresa:** Emite facturas desde diferentes CUITs o razones sociales dentro de una misma instalación de WooCommerce.
+* 🏢 **Arquitectura Multi-empresa:** Emite facturas desde diferentes CUITs o razones sociales dentro de una misma instalación de WooCommerce, con soporte para asignar **Logo personalizado**, Punto de Venta, IIBB y Fecha de Inicio de Actividades a cada una.
 * ⚡ **Doble Modo de Emisión (Individual y en Lote):**
   * **Automático:** Emite comprobantes en segundo plano al cambiar el estado del pedido (ej. *Completado* o *Procesando*).
   * **Manual / Mixto:** Emite con 1 solo clic desde el panel de cada orden en WooCommerce.

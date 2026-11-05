@@ -58,6 +58,7 @@ class CompanyManager {
         $companies[$id] = [
             'id'            => $id,
             'name'          => sanitize_text_field($data['name'] ?? ''),
+            'logo_url'      => esc_url_raw($data['logo_url'] ?? ''),
             'cuit'          => preg_replace('/[^0-9]/', '', $data['cuit'] ?? ''),
             'tax_condition' => sanitize_text_field($data['tax_condition'] ?? 'monotributo'),
             'iibb'          => sanitize_text_field($data['iibb'] ?? ''),

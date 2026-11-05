@@ -11,12 +11,19 @@ class Settings {
         add_filter('woocommerce_settings_tabs_array', [__CLASS__, 'add_settings_tab'], 50);
         add_action('woocommerce_settings_tabs_arca_invoicing', [__CLASS__, 'render_settings_tab']);
         add_action('woocommerce_update_options_arca_invoicing', [__CLASS__, 'save_settings']);
+        add_action('admin_enqueue_scripts', [__CLASS__, 'enqueue_media_uploader']);
 
         // Handlers para acciones de certificados y empresas
         add_action('admin_post_wc_arca_generate_cert_request', [__CLASS__, 'handle_generate_csr']);
         add_action('admin_post_wc_arca_save_company', [__CLASS__, 'handle_save_company']);
         add_action('admin_post_wc_arca_delete_company', [__CLASS__, 'handle_delete_company']);
         add_action('admin_post_wc_arca_upload_certificate', [__CLASS__, 'handle_upload_certificate']);
+    }
+
+    public static function enqueue_media_uploader($hook) {
+        if (isset($_GET['tab']) && $_GET['tab'] === 'arca_invoicing') {
+            wp_enqueue_media();
+        }
     }
 
     public static function add_settings_tab($settings_tabs) {
@@ -296,6 +303,21 @@ class Settings {
                             <td><input type="text" name="name" value="<?php echo esc_attr($company_to_edit['name'] ?? ''); ?>" class="regular-text" required></td>
                         </tr>
                         <tr>
+                            <th><label>Logo de la Empresa (para PDF)</label></th>
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 15px;">
+                                    <input type="text" id="wc_arca_logo_url" name="logo_url" value="<?php echo esc_attr($company_to_edit['logo_url'] ?? ''); ?>" class="regular-text" placeholder="https://...">
+                                    <button type="button" class="button" id="wc_arca_upload_logo_btn">Seleccionar de la Biblioteca</button>
+                                </div>
+                                <div id="wc_arca_logo_preview" style="margin-top: 10px;">
+                                    <?php if (!empty($company_to_edit['logo_url'])): ?>
+                                        <img src="<?php echo esc_url($company_to_edit['logo_url']); ?>" style="max-height: 60px; max-width: 180px; border: 1px solid #ddd; padding: 4px; background: #fff; border-radius: 4px;">
+                                    <?php endif; ?>
+                                </div>
+                                <p class="description">Selecciona o sube una imagen (PNG o JPG recomendado) para estampar en la cabecera de tus Facturas, Notas de Crédito y Remitos.</p>
+                            </td>
+                        </tr>
+                        <tr>
                             <th><label>CUIT</label></th>
                             <td><input type="text" name="cuit" value="<?php echo esc_attr($company_to_edit['cuit'] ?? ''); ?>" class="regular-text" placeholder="20XXXXXXXXX (sin guiones)" required></td>
                         </tr>
@@ -350,6 +372,25 @@ class Settings {
                         <a href="<?php echo esc_url(admin_url('admin.php?page=wc-settings&tab=arca_invoicing&section=companies')); ?>" class="button">Cancelar</a>
                     </p>
                 </form>
+
+                <script type="text/javascript">
+                jQuery(document).ready(function($) {
+                    $('#wc_arca_upload_logo_btn').on('click', function(e) {
+                        e.preventDefault();
+                        var frame = wp.media({
+                            title: 'Seleccionar Logo para Factura',
+                            button: { text: 'Usar este Logo' },
+                            multiple: false
+                        });
+                        frame.on('select', function() {
+                            var attachment = frame.state().get('selection').first().toJSON();
+                            $('#wc_arca_logo_url').val(attachment.url);
+                            $('#wc_arca_logo_preview').html('<img src="' + attachment.url + '" style="max-height: 60px; max-width: 180px; border: 1px solid #ddd; padding: 4px; background: #fff; border-radius: 4px;">');
+                        });
+                        frame.open();
+                    });
+                });
+                </script>
             </div>
             <?php
             return;
@@ -527,6 +568,7 @@ class Settings {
         $data = [
             'id'            => sanitize_key($_POST['company_id'] ?? ''),
             'name'          => sanitize_text_field($_POST['name'] ?? ''),
+            'logo_url'      => esc_url_raw($_POST['logo_url'] ?? ''),
             'cuit'          => sanitize_text_field($_POST['cuit'] ?? ''),
             'tax_condition' => sanitize_text_field($_POST['tax_condition'] ?? 'monotributo'),
             'iibb'          => sanitize_text_field($_POST['iibb'] ?? ''),
