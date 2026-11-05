@@ -1,0 +1,23 @@
+# Certificados y claves privadas (CRÍTICO: nunca subir a control de versiones)
+certs/*.key
+certs/*.crt
+certs/*.csr
+storage/tokens/*.json
+storage/tokens/*.xml
+storage/invoices/*.pdf
+
+# Vendor & Composer
+vendor/
+composer.lock
+
+# Logs
+logs/*.log
+debug.log
+
+# OS & Editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.sublime-workspace
+
