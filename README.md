@@ -12,7 +12,7 @@
 [![PHP](https://img.shields.io/badge/PHP-7.4+-777BB4.svg)](https://www.php.net/)
 [![ARCA](https://img.shields.io/badge/ARCA%20%2F%20AFIP-WSFEV1%20%7C%20WSAA-green.svg)](https://www.afip.gob.ar/)
 
-[📖 Ver Guía Paso a Paso](TUTORIAL.md) • [⚡ Reportar un Problema](https://github.com/sarthouse/open-facturarca/issues) • [🤝 Contribuir](https://github.com/tu-usuario/open-facturarca/pulls)
+[📖 Ver Guía Paso a Paso](TUTORIAL.md) • [⚡ Reportar un Problema](https://github.com/sarthouse/open-facturarca/issues) • [🤝 Contribuir](https://github.com/sarthouse/open-facturarca/pulls)
 
 </div>
 
