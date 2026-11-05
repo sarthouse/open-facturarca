@@ -38,7 +38,7 @@ class SimplePdf {
 
     public function rect($x, $y, $w, $h, $fill = false, $stroke = true, $fillColor = [240, 240, 240], $strokeColor = [0, 0, 0]) {
         $pdf_y = $this->page_height - $y - $h;
-        $op = ($fill && $stroke) ? 'B' : ($fill ? 'f' : 's');
+        $op = ($fill && $stroke) ? 'B' : ($fill ? 'f' : 'S');
         $r_fill = $fillColor[0] / 255;
         $g_fill = $fillColor[1] / 255;
         $b_fill = $fillColor[2] / 255;

@@ -5,7 +5,7 @@
  * Description: Solución de código abierto para emitir Facturas A, B, C y Notas de Crédito automáticas o manuales en ARCA (AFIP) con soporte Multi-empresa.
  * Version:     1.0.0
  * Author:      Tiago Gabriel Sarthou
- * Author URI:  https://github.com/sarthouse/open-facturarca
+ * Author URI:  https://github.com/sarthouse/
  * License:     GPLv3 or later
  * License URI: https://www.gnu.org/licenses/gpl-3.0.html
  * Text Domain: open-facturarca
@@ -72,7 +72,6 @@ function open_facturarca_action_links($links) {
 function open_facturarca_row_meta($links, $file) {
     if ($file === plugin_basename(__FILE__)) {
         $links[] = '<a href="https://github.com/sarthouse/open-facturarca" target="_blank">' . __('Ver en GitHub', 'open-facturarca') . '</a>';
-        $links[] = '<a href="https://github.com/sarthouse/open-facturarca/blob/main/TUTORIAL.md" target="_blank">' . __('Guía de Configuración', 'open-facturarca') . '</a>';
     }
     return $links;
 }
