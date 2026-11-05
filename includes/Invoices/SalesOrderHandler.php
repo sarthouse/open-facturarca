@@ -35,12 +35,21 @@ class SalesOrderHandler {
     }
 
     public static function get_download_url($order_id) {
-        $nonce = wp_create_nonce('wc_arca_view_sales_' . $order_id);
-        return add_query_arg([
+        $order = is_numeric($order_id) ? wc_get_order($order_id) : $order_id;
+        $id = $order ? $order->get_id() : (int) $order_id;
+        $order_key = $order ? $order->get_order_key() : '';
+
+        $nonce = wp_create_nonce('wc_arca_view_sales_' . $id);
+        $args = [
             'wc_arca_action' => 'download_sales_order',
-            'order_id'       => $order_id,
+            'order_id'       => $id,
             'nonce'          => $nonce,
-        ], home_url('/'));
+        ];
+        if ($order_key) {
+            $args['order_key'] = $order_key;
+        }
+
+        return add_query_arg($args, home_url('/'));
     }
 
     public static function handle_sales_order_download() {
@@ -48,8 +57,9 @@ class SalesOrderHandler {
             return;
         }
 
-        $order_id = absint($_GET['order_id'] ?? 0);
-        $nonce    = sanitize_text_field($_GET['nonce'] ?? '');
+        $order_id  = absint($_GET['order_id'] ?? 0);
+        $nonce     = sanitize_text_field($_GET['nonce'] ?? '');
+        $order_key = sanitize_text_field($_GET['order_key'] ?? '');
 
         if (!$order_id || !wp_verify_nonce($nonce, 'wc_arca_view_sales_' . $order_id)) {
             wp_die(__('Enlace de descarga inválido o expirado.', 'open-facturarca'), 403);
@@ -63,8 +73,9 @@ class SalesOrderHandler {
         $current_user_id = get_current_user_id();
         $is_admin = current_user_can('manage_woocommerce');
         $is_owner = ($current_user_id > 0 && $current_user_id === $order->get_customer_id());
+        $is_guest_with_key = (!empty($order_key) && hash_equals($order->get_order_key(), $order_key));
 
-        if (!$is_admin && !$is_owner) {
+        if (!$is_admin && !$is_owner && !$is_guest_with_key) {
             wp_die(__('No tienes permisos para ver esta nota de pedido.', 'open-facturarca'), 403);
         }
 

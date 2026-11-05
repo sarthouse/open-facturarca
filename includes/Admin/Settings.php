@@ -145,9 +145,9 @@ class Settings {
     private static function render_automation_view() {
         $companies = CompanyManager::get_companies();
         $default_company_id = get_option('wc_arca_default_company_id', 'default');
-        $auto_issue = get_option('wc_arca_auto_issue', 'yes');
+        $auto_issue = get_option('wc_arca_auto_issue', 'no'); // Por defecto DESMARCADA
         $trigger_status = get_option('wc_arca_trigger_status', 'completed');
-        $auto_credit_note = get_option('wc_arca_auto_credit_note', 'yes');
+        $auto_credit_note = get_option('wc_arca_auto_credit_note', 'no'); // Por defecto DESMARCADA
         $invoice_copies = get_option('wc_arca_invoice_copies', 'original');
         $slip_copies = get_option('wc_arca_slip_copies', 'duplicado');
         ?>
@@ -271,7 +271,7 @@ class Settings {
                 'desc'    => __('Emitir factura de forma automática al cambiar el estado del pedido.', 'wc-factura-arca'),
                 'id'      => 'wc_arca_auto_issue',
                 'type'    => 'checkbox',
-                'default' => 'yes',
+                'default' => 'no', // Por defecto DESMARCADA
             ],
             [
                 'title'   => __('Estado disparador de Factura', 'wc-factura-arca'),
@@ -544,7 +544,7 @@ class Settings {
 
                     <p>
                         <button type="submit" class="button button-primary">Guardar Empresa</button>
-                        <a href="<?php echo esc_url(admin_url('admin.php?page=wc-settings&tab=arca_invoicing&section=companies')); ?>" class="button">Cancelar</a>
+                        <a href="<?php echo esc_url(admin_url('admin.php?page=open-facturarca&section=companies')); ?>" class="button">Cancelar</a>
                     </p>
                 </form>
 
@@ -574,7 +574,7 @@ class Settings {
         // Listado de empresas
         ?>
         <p style="margin-bottom: 15px;">
-            <a href="<?php echo esc_url(admin_url('admin.php?page=wc-settings&tab=arca_invoicing&section=companies&action=new')); ?>" class="button button-primary">
+            <a href="<?php echo esc_url(admin_url('admin.php?page=open-facturarca&section=companies&action=new')); ?>" class="button button-primary">
                 Añadir Nueva Empresa
             </a>
         </p>
@@ -614,7 +614,7 @@ class Settings {
                         <?php endif; ?>
                     </td>
                     <td>
-                        <a href="<?php echo esc_url(admin_url('admin.php?page=wc-settings&tab=arca_invoicing&section=companies&company_id=' . $id)); ?>" class="button button-small">Editar</a>
+                        <a href="<?php echo esc_url(admin_url('admin.php?page=open-facturarca&section=companies&action=edit&company_id=' . $id)); ?>" class="button button-small">Editar</a>
                         <?php if (count($companies) > 1): 
                             $del_url = wp_nonce_url(admin_url('admin-post.php?action=wc_arca_delete_company&company_id=' . $id), 'wc_arca_del_company_' . $id);
                         ?>
@@ -759,7 +759,7 @@ class Settings {
         ];
 
         CompanyManager::save_company($data);
-        wp_redirect(admin_url('admin.php?page=wc-settings&tab=arca_invoicing&section=companies'));
+        wp_redirect(admin_url('admin.php?page=open-facturarca&section=companies'));
         exit;
     }
 
@@ -769,7 +769,7 @@ class Settings {
         if (!current_user_can('manage_woocommerce')) wp_die('No autorizado');
 
         CompanyManager::delete_company($id);
-        wp_redirect(admin_url('admin.php?page=wc-settings&tab=arca_invoicing&section=companies'));
+        wp_redirect(admin_url('admin.php?page=open-facturarca&section=companies'));
         exit;
     }
 
@@ -861,7 +861,7 @@ class Settings {
             CompanyManager::save_company($company);
         }
 
-        wp_redirect(admin_url('admin.php?page=wc-settings&tab=arca_invoicing&section=companies'));
+        wp_redirect(admin_url('admin.php?page=open-facturarca&section=companies'));
         exit;
     }
 }
