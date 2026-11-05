@@ -85,12 +85,14 @@ $shipping_total = (float) $order->get_shipping_total();
             <tr>
                 <td class="client-col">
                     <div class="meta-line"><strong>Razón Social / Cliente:</strong> <?php echo esc_html($cliente_nombre); ?></div>
-                    <div class="meta-line"><strong>Documento / DNI:</strong> <?php echo esc_html($clean_doc); ?></div>
+                    <div class="meta-line"><strong>DNI / CUIT:</strong> <?php echo esc_html($clean_doc); ?></div>
                     <div class="meta-line"><strong>Condición frente al IVA:</strong> Consumidor Final</div>
                     <div class="meta-line"><strong>Condición de Venta:</strong> <?php echo esc_html($order->get_payment_method_title() ?: 'Contado'); ?></div>
                 </td>
                 <td class="client-col">
-                    <div class="meta-line"><strong>Domicilio:</strong> <?php echo esc_html($customer_address); ?></div>
+                    <div class="meta-line"><strong>Domicilio:</strong> <?php echo esc_html($domicilio); ?></div>
+                    <div class="meta-line"><strong>Localidad:</strong> <?php echo esc_html($localidad); ?></div>
+                    <div class="meta-line"><strong>Provincia:</strong> <?php echo esc_html($provincia); ?></div>
                     <div class="meta-line"><strong>Teléfono:</strong> <?php echo esc_html($telefono); ?></div>
                     <div class="meta-line"><strong>Email:</strong> <?php echo esc_html($email); ?></div>
                     <div class="meta-line"><strong>Pedido WooCommerce:</strong> #<?php echo esc_html($order->get_id()); ?></div>

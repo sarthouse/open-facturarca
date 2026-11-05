@@ -282,6 +282,81 @@ class DompdfRenderer {
     }
 
     /**
+     * Convierte un código de provincia o estado en su nombre completo legible
+     */
+    public static function get_state_name(?string $state_code, string $country_code = 'AR'): string {
+        if (empty($state_code)) {
+            return '-';
+        }
+
+        $states = function_exists('WC') && WC()->countries ? WC()->countries->get_states($country_code) : [];
+
+        if (!empty($states) && isset($states[$state_code])) {
+            return $states[$state_code];
+        }
+
+        // Mapeo de respaldo para provincias argentinas
+        $ar_states = [
+            'C' => 'Ciudad Autónoma de Buenos Aires',
+            'B' => 'Buenos Aires',
+            'K' => 'Catamarca',
+            'H' => 'Chaco',
+            'U' => 'Chubut',
+            'X' => 'Córdoba',
+            'W' => 'Corrientes',
+            'E' => 'Entre Ríos',
+            'P' => 'Formosa',
+            'Y' => 'Jujuy',
+            'L' => 'La Pampa',
+            'F' => 'La Rioja',
+            'M' => 'Mendoza',
+            'N' => 'Misiones',
+            'Q' => 'Neuquén',
+            'R' => 'Río Negro',
+            'A' => 'Salta',
+            'J' => 'San Juan',
+            'D' => 'San Luis',
+            'Z' => 'Santa Cruz',
+            'S' => 'Santa Fe',
+            'G' => 'Santiago del Estero',
+            'V' => 'Tierra del Fuego',
+            'T' => 'Tucumán',
+        ];
+
+        $code_upper = strtoupper(trim($state_code));
+        return $ar_states[$code_upper] ?? $state_code;
+    }
+
+    /**
+     * Desglosa y formatea la dirección del cliente en campos individuales estructurados
+     */
+    public static function get_order_address_fields($order, string $type = 'billing'): array {
+        $prefix = ($type === 'shipping') ? 'shipping' : 'billing';
+
+        $address_1 = $type === 'shipping' ? ($order->get_shipping_address_1() ?: $order->get_billing_address_1()) : $order->get_billing_address_1();
+        $address_2 = $type === 'shipping' ? ($order->get_shipping_address_2() ?: $order->get_billing_address_2()) : $order->get_billing_address_2();
+        $city      = $type === 'shipping' ? ($order->get_shipping_city() ?: $order->get_billing_city()) : $order->get_billing_city();
+        $state_raw = $type === 'shipping' ? ($order->get_shipping_state() ?: $order->get_billing_state()) : $order->get_billing_state();
+        $postcode  = $type === 'shipping' ? ($order->get_shipping_postcode() ?: $order->get_billing_postcode()) : $order->get_billing_postcode();
+        $country   = $type === 'shipping' ? ($order->get_shipping_country() ?: $order->get_billing_country()) : $order->get_billing_country();
+
+        $domicilio_parts = array_filter([$address_1, $address_2]);
+        $domicilio = !empty($domicilio_parts) ? implode(', ', $domicilio_parts) : '-';
+        if (!empty($postcode) && $postcode !== '-') {
+            $domicilio .= ' (CP ' . $postcode . ')';
+        }
+
+        $localidad = !empty($city) ? $city : '-';
+        $provincia = self::get_state_name($state_raw, $country ?: 'AR');
+
+        return [
+            'domicilio' => $domicilio,
+            'localidad' => $localidad,
+            'provincia' => $provincia,
+        ];
+    }
+
+    /**
      * Convierte HTML en binario PDF
      */
     public static function render_html_to_pdf(string $html, string $paper = 'a4', string $orientation = 'portrait'): string {

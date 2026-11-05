@@ -81,8 +81,10 @@ $shipping_method = $order->get_shipping_method() ?: 'Coordinar entrega';
             <tr>
                 <td class="client-col">
                     <div class="meta-line"><strong>Razón Social / Destinatario:</strong> <?php echo esc_html($destinatario); ?></div>
-                    <div class="meta-line"><strong>Documento / DNI:</strong> <?php echo esc_html($clean_doc); ?></div>
-                    <div class="meta-line"><strong>Dirección de Entrega:</strong> <?php echo esc_html($customer_address); ?></div>
+                    <div class="meta-line"><strong>DNI / CUIT:</strong> <?php echo esc_html($clean_doc); ?></div>
+                    <div class="meta-line"><strong>Domicilio:</strong> <?php echo esc_html($domicilio); ?></div>
+                    <div class="meta-line"><strong>Localidad:</strong> <?php echo esc_html($localidad); ?></div>
+                    <div class="meta-line"><strong>Provincia:</strong> <?php echo esc_html($provincia); ?></div>
                     <div class="meta-line"><strong>Teléfono de Contacto:</strong> <?php echo esc_html($telefono); ?></div>
                 </td>
                 <td class="client-col">

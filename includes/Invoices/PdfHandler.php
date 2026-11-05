@@ -163,13 +163,10 @@ class PdfHandler {
         $letra = ($cbte_tipo === 1 || $cbte_tipo === 2 || $cbte_tipo === 3) ? 'A' : (($cbte_tipo === 6 || $cbte_tipo === 7 || $cbte_tipo === 8) ? 'B' : 'C');
 
         $clean_doc = $order->get_meta('_billing_dni') ?: ($order->get_meta('_billing_doc_number') ?: ($order->get_meta('billing_dni') ?: '-'));
-        $customer_address_parts = array_filter([
-            $order->get_billing_address_1(),
-            $order->get_billing_city(),
-            $order->get_billing_state(),
-            $order->get_billing_postcode()
-        ]);
-        $customer_address = !empty($customer_address_parts) ? implode(', ', $customer_address_parts) : '-';
+        $address_data = DompdfRenderer::get_order_address_fields($order, 'billing');
+        $domicilio = $address_data['domicilio'];
+        $localidad = $address_data['localidad'];
+        $provincia = $address_data['provincia'];
 
         $total = (float) $order->get_total();
         $subtotal = (float) $order->get_subtotal();
@@ -198,6 +195,9 @@ class PdfHandler {
         $qr_url = "https://www.afip.gob.ar/fe/qr/?p=" . $qr_encoded;
         $qr_image_url = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" . urlencode($qr_url);
 
+        $raw_client_tax_cond = $order->get_meta('_billing_tax_condition') ?: 'consumidor_final';
+        $cond_cliente = TaxResolver::get_tax_condition_label($raw_client_tax_cond);
+
         $data = [
             'order'            => $order,
             'company'          => $company,
@@ -211,10 +211,13 @@ class PdfHandler {
             'razon_social'     => $razon_social,
             'nombre_emisor'    => $nombre_emisor,
             'cond_emisor'      => $cond_emisor,
+            'cond_cliente'     => $cond_cliente,
             'iibb_emisor'      => $iibb_emisor,
             'fch_inicio'       => $fch_inicio,
             'clean_doc'        => $clean_doc,
-            'customer_address' => $customer_address,
+            'domicilio'        => $domicilio,
+            'localidad'        => $localidad,
+            'provincia'        => $provincia,
             'cae'              => $cae,
             'cae_vto_fmt'      => !empty($cae_vto) ? date('d/m/Y', strtotime($cae_vto)) : '-',
             'subtotal'         => $subtotal,

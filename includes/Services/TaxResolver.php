@@ -54,5 +54,20 @@ class TaxResolver {
 
         return $labels[$cbte_tipo] ?? 'Comprobante ' . $cbte_tipo;
     }
+
+    /**
+     * Devuelve el nombre legible de la condición frente al IVA
+     */
+    public static function get_tax_condition_label($condition_slug) {
+        $labels = [
+            'consumidor_final'      => 'Consumidor Final',
+            'responsable_inscripto' => 'IVA Responsable Inscripto',
+            'monotributo'           => 'Responsable Monotributo',
+            'exento'                => 'IVA Exento',
+            'no_alcanzado'          => 'No Alcanzado',
+        ];
+
+        return $labels[$condition_slug] ?? ucfirst(str_replace('_', ' ', (string)$condition_slug));
+    }
 }
 

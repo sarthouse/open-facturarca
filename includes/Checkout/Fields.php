@@ -16,9 +16,10 @@ class Fields {
         // Guardar campos en los metadatos de la orden
         add_action('woocommerce_checkout_create_order', [__CLASS__, 'save_order_fields'], 10, 2);
 
-        // Mostrar y editar en la vista del pedido en admin
+        // Mostrar y editar en la vista del pedido en admin (Compatible con Legacy y HPOS)
         add_action('woocommerce_admin_order_data_after_billing_address', [__CLASS__, 'display_admin_order_fields'], 10, 1);
         add_action('woocommerce_process_shop_order_meta', [__CLASS__, 'save_admin_order_fields'], 10, 1);
+        add_action('woocommerce_update_order', [__CLASS__, 'save_admin_order_fields'], 10, 1);
 
         // Endpoint AJAX para chequear CUIT en tiempo real en el checkout
         add_action('wp_ajax_wc_arca_check_cuit', [__CLASS__, 'ajax_check_cuit']);
@@ -184,8 +185,18 @@ class Fields {
     }
 
     public static function save_admin_order_fields($order_id) {
+        // Evitar loops infinitos al disparar save() dentro de woocommerce_update_order
+        static $is_saving = false;
+        if ($is_saving) return;
+
+        if (empty($_POST['_billing_dni']) && empty($_POST['_billing_tax_condition'])) {
+            return;
+        }
+
         $order = wc_get_order($order_id);
         if (!$order) return;
+
+        $is_saving = true;
 
         if (isset($_POST['_billing_dni'])) {
             $raw_doc = sanitize_text_field($_POST['_billing_dni']);
@@ -195,6 +206,20 @@ class Fields {
 
             if (strlen($clean_doc) === 11) {
                 $order->update_meta_data('_billing_doc_type', 80);
+
+                // Auto-consultar padrón de ARCA si es CUIT para obtener Razón Social
+                try {
+                    $padron = new PadronClient();
+                    $info = $padron->get_tax_condition_by_cuit($clean_doc);
+                    if (!empty($info['tax_condition']) && empty($_POST['_billing_tax_condition'])) {
+                        $order->update_meta_data('_billing_tax_condition', $info['tax_condition']);
+                    }
+                    if (!empty($info['name'])) {
+                        $order->update_meta_data('_billing_tax_name', $info['name']);
+                    }
+                } catch (\Exception $e) {
+                    // Silenciar si no hay conectividad temporal con padrón
+                }
             } elseif (!empty($clean_doc)) {
                 $order->update_meta_data('_billing_doc_type', 96);
             }
@@ -205,6 +230,7 @@ class Fields {
         }
 
         $order->save();
+        $is_saving = false;
     }
 
     /**

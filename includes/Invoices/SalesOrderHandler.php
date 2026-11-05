@@ -105,27 +105,26 @@ class SalesOrderHandler {
         $date         = $order->get_date_created() ? $order->get_date_created()->date('d/m/Y') : date('d/m/Y');
 
         $clean_doc = $order->get_meta('_billing_dni') ?: ($order->get_meta('_billing_doc_number') ?: ($order->get_meta('billing_dni') ?: '-'));
-        $customer_address_parts = array_filter([
-            $order->get_billing_address_1(),
-            $order->get_billing_city(),
-            $order->get_billing_state(),
-            $order->get_billing_postcode()
-        ]);
-        $customer_address = !empty($customer_address_parts) ? implode(', ', $customer_address_parts) : '-';
+        $address_data = DompdfRenderer::get_order_address_fields($order, 'billing');
+        $domicilio = $address_data['domicilio'];
+        $localidad = $address_data['localidad'];
+        $provincia = $address_data['provincia'];
 
         $total = (float) $order->get_total();
         $subtotal = (float) $order->get_subtotal();
 
         $data = [
-            'order'            => $order,
-            'company'          => $company,
-            'pto_vta'          => $pto_vta,
-            'cbte_nro'         => $cbte_nro,
-            'date'             => $date,
-            'clean_doc'        => $clean_doc,
-            'customer_address' => $customer_address,
-            'subtotal'         => $subtotal,
-            'total'            => $total,
+            'order'       => $order,
+            'company'     => $company,
+            'pto_vta'     => $pto_vta,
+            'cbte_nro'    => $cbte_nro,
+            'date'        => $date,
+            'clean_doc'   => $clean_doc,
+            'domicilio'   => $domicilio,
+            'localidad'   => $localidad,
+            'provincia'   => $provincia,
+            'subtotal'    => $subtotal,
+            'total'       => $total,
         ];
 
         $template_file = OPEN_FACTURARCA_DIR . 'templates/sales-order.php';
