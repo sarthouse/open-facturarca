@@ -59,6 +59,21 @@ class OrderMetabox {
         $order = ($post_or_order instanceof \WC_Order) ? $post_or_order : wc_get_order($post_or_order->ID);
         if (!$order) return;
 
+        // Mostrar aviso de éxito o error dentro del metabox (para compatibilidad total con HPOS y temas)
+        if (isset($_GET['arca_notice'])) {
+            $notice = sanitize_text_field($_GET['arca_notice']);
+            $msg    = isset($_GET['arca_msg']) ? urldecode($_GET['arca_msg']) : '';
+            if ($notice === 'success') {
+                echo '<div style="background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; padding: 8px 10px; border-radius: 4px; margin-bottom: 12px; font-size: 12.5px;">';
+                echo '<strong>Exito:</strong> ' . esc_html__('Comprobante emitido y autorizado con éxito por ARCA.', 'open-facturarca');
+                echo '</div>';
+            } elseif ($notice === 'error') {
+                echo '<div style="background: #ffebee; color: #c62828; border: 1px solid #ef9a9a; padding: 8px 10px; border-radius: 4px; margin-bottom: 12px; font-size: 12.5px;">';
+                echo '<strong>Error al facturar:</strong><br>' . esc_html($msg ?: __('Ocurrió un error al procesar el comprobante.', 'open-facturarca'));
+                echo '</div>';
+            }
+        }
+
         $cae          = $order->get_meta('_arca_cae');
         $cae_vto      = $order->get_meta('_arca_cae_vto');
         $cbte_nro     = $order->get_meta('_arca_cbte_nro');
@@ -121,23 +136,19 @@ class OrderMetabox {
 
             <div style="border-top: 1px solid #ddd; padding-top: 10px; margin-top: 10px;">
                 <p style="font-weight: 600; margin-bottom: 5px;">Emitir Nota de Crédito Manual:</p>
-                <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
-                    <input type="hidden" name="action" value="wc_arca_manual_credit_note">
-                    <input type="hidden" name="order_id" value="<?php echo esc_attr($order->get_id()); ?>">
-                    <?php wp_nonce_field('wc_arca_nc_nonce'); ?>
-                    
+                <div class="wc-arca-nc-form">
                     <p style="margin-bottom: 8px;">
                         <label style="font-size: 12px; display:block;">Monto a acreditar ($):</label>
-                        <input type="number" step="0.01" max="<?php echo esc_attr($order->get_total()); ?>" name="nc_amount" value="<?php echo esc_attr($order->get_total()); ?>" style="width: 100%;">
+                        <input type="number" step="0.01" max="<?php echo esc_attr($order->get_total()); ?>" id="wc_arca_nc_amount" value="<?php echo esc_attr($order->get_total()); ?>" style="width: 100%;">
                     </p>
                     <p style="margin-bottom: 8px;">
                         <label style="font-size: 12px; display:block;">Motivo / Concepto (Opcional):</label>
-                        <input type="text" name="nc_reason" placeholder="Ej: Devolución de producto, Talle, Bonificación" style="width: 100%;">
+                        <input type="text" id="wc_arca_nc_reason" placeholder="Ej: Devolución de producto, Talle, Bonificación" style="width: 100%;">
                     </p>
-                    <button type="submit" class="button" style="width: 100%; border-color: #c62828; color: #c62828;" onclick="return confirm('¿Confirmas la emisión de esta Nota de Crédito en ARCA? Esta acción es irreversible ante el fisco.');">
+                    <button type="button" class="button" style="width: 100%; border-color: #c62828; color: #c62828;" onclick="wcArcaSubmitCreditNote(<?php echo esc_attr($order->get_id()); ?>, '<?php echo esc_attr(wp_create_nonce('wc_arca_nc_nonce')); ?>');">
                         Emitir Nota de Crédito
                     </button>
-                </form>
+                </div>
             </div>
             <?php
         } else {
@@ -147,14 +158,10 @@ class OrderMetabox {
             <div class="wc-arca-actions">
                 <p style="margin-bottom: 10px;">No se ha emitido factura para este pedido.</p>
                 
-                <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
-                    <input type="hidden" name="action" value="wc_arca_manual_issue">
-                    <input type="hidden" name="order_id" value="<?php echo esc_attr($order->get_id()); ?>">
-                    <?php wp_nonce_field('wc_arca_issue_nonce'); ?>
-
+                <div class="wc-arca-issue-box">
                     <p style="margin-bottom: 10px;">
                         <label style="font-size: 12px; font-weight: bold; display: block; margin-bottom: 3px;">Facturar con Empresa:</label>
-                        <select name="company_id" style="width: 100%;">
+                        <select id="wc_arca_company_select" style="width: 100%;">
                             <?php foreach ($companies as $id => $c): ?>
                                 <option value="<?php echo esc_attr($id); ?>" <?php selected($id, $default_id); ?>>
                                     <?php echo esc_html($c['name']); ?> (<?php echo esc_html($c['cuit']); ?>)
@@ -163,10 +170,79 @@ class OrderMetabox {
                         </select>
                     </p>
 
-                    <button type="submit" class="button button-primary" style="width: 100%; text-align: center; margin-bottom: 8px;">
+                    <button type="button" id="wc_arca_btn_issue" class="button button-primary" style="width: 100%; text-align: center; margin-bottom: 8px;" onclick="wcArcaSubmitIssue(<?php echo esc_attr($order->get_id()); ?>, '<?php echo esc_attr(wp_create_nonce('wc_arca_issue_nonce')); ?>');">
                         Emitir Factura Ahora
                     </button>
-                </form>
+                </div>
+
+                <script>
+                function wcArcaSubmitIssue(orderId, nonce) {
+                    var btn = document.getElementById('wc_arca_btn_issue');
+                    var companySelect = document.getElementById('wc_arca_company_select');
+                    var companyId = companySelect ? companySelect.value : '';
+                    
+                    btn.disabled = true;
+                    btn.innerText = 'Emitiendo ante ARCA...';
+
+                    var form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = '<?php echo esc_url(admin_url('admin-post.php')); ?>';
+                    
+                    var fAction = document.createElement('input');
+                    fAction.type = 'hidden'; fAction.name = 'action'; fAction.value = 'wc_arca_manual_issue';
+                    form.appendChild(fAction);
+
+                    var fOrder = document.createElement('input');
+                    fOrder.type = 'hidden'; fOrder.name = 'order_id'; fOrder.value = orderId;
+                    form.appendChild(fOrder);
+
+                    var fCompany = document.createElement('input');
+                    fCompany.type = 'hidden'; fCompany.name = 'company_id'; fCompany.value = companyId;
+                    form.appendChild(fCompany);
+
+                    var fNonce = document.createElement('input');
+                    fNonce.type = 'hidden'; fNonce.name = '_wpnonce'; fNonce.value = nonce;
+                    form.appendChild(fNonce);
+
+                    document.body.appendChild(form);
+                    form.submit();
+                }
+
+                function wcArcaSubmitCreditNote(orderId, nonce) {
+                    if (!confirm('¿Confirmas la emisión de esta Nota de Crédito en ARCA? Esta acción es irreversible ante el fisco.')) {
+                        return;
+                    }
+                    var amount = document.getElementById('wc_arca_nc_amount').value;
+                    var reason = document.getElementById('wc_arca_nc_reason').value;
+
+                    var form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = '<?php echo esc_url(admin_url('admin-post.php')); ?>';
+
+                    var fAction = document.createElement('input');
+                    fAction.type = 'hidden'; fAction.name = 'action'; fAction.value = 'wc_arca_manual_credit_note';
+                    form.appendChild(fAction);
+
+                    var fOrder = document.createElement('input');
+                    fOrder.type = 'hidden'; fOrder.name = 'order_id'; fOrder.value = orderId;
+                    form.appendChild(fOrder);
+
+                    var fAmount = document.createElement('input');
+                    fAmount.type = 'hidden'; fAmount.name = 'nc_amount'; fAmount.value = amount;
+                    form.appendChild(fAmount);
+
+                    var fReason = document.createElement('input');
+                    fReason.type = 'hidden'; fReason.name = 'nc_reason'; fReason.value = reason;
+                    form.appendChild(fReason);
+
+                    var fNonce = document.createElement('input');
+                    fNonce.type = 'hidden'; fNonce.name = '_wpnonce'; fNonce.value = nonce;
+                    form.appendChild(fNonce);
+
+                    document.body.appendChild(form);
+                    form.submit();
+                }
+                </script>
 
                 <?php 
                 $slip_url = \WcArca\Invoices\PackingSlipHandler::get_download_url($order->get_id());

@@ -980,7 +980,19 @@ class Settings {
             $content = file_get_contents($_FILES['cert_file']['tmp_name']);
             $parsed_cert = @openssl_x509_read($content);
             if ($parsed_cert === false) {
-                wp_die(__('El archivo subido no es un certificado X.509 válido.', 'wc-factura-arca'), 400);
+                wp_die(__('El archivo subido no es un certificado X.509 válido.', 'open-facturarca'), 400);
+            }
+
+            // Validar correspondencia matemática del par Clave Privada y Certificado
+            $key_file = OPEN_FACTURARCA_DIR . "certs/{$company['cuit']}.key";
+            if (file_exists($key_file)) {
+                $key_content = file_get_contents($key_file);
+                $key_resource = @openssl_pkey_get_private($key_content);
+                if ($key_resource && function_exists('openssl_x509_check_private_key')) {
+                    if (!openssl_x509_check_private_key($parsed_cert, $key_resource)) {
+                        wp_die(__('El certificado .crt no coincide con la clave privada (.key) generada para esta empresa. Por favor verifique haber descargado el certificado correspondiente al CSR generado.', 'open-facturarca'), 400);
+                    }
+                }
             }
 
             $target_file = OPEN_FACTURARCA_DIR . "certs/{$company['cuit']}.crt";
