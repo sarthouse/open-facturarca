@@ -23,8 +23,8 @@ class BulkActions {
     }
 
     public static function register_bulk_actions($actions) {
-        $actions['arca_bulk_issue']  = __('⚡ Facturar en ARCA (Lote)', 'open-facturarca');
-        $actions['arca_bulk_export'] = __('📦 Exportar Facturas a ZIP (Lote)', 'open-facturarca');
+        $actions['arca_bulk_issue']  = __('Facturar en ARCA (Lote)', 'open-facturarca');
+        $actions['arca_bulk_export'] = __('Exportar Facturas a ZIP (Lote)', 'open-facturarca');
         return $actions;
     }
 

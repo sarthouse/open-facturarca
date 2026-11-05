@@ -15,7 +15,7 @@ class SalesOrderHandler {
 
     public static function add_admin_order_sales_button($order) {
         $url = self::get_download_url($order->get_id());
-        echo '<a class="button wc-action-button" href="' . esc_url($url) . '" target="_blank" title="' . esc_attr__('Ver Nota de Pedido / Venta (PDF)', 'open-facturarca') . '">📋 Nota de Pedido</a>';
+        echo '<a class="button wc-action-button" href="' . esc_url($url) . '" target="_blank" title="' . esc_attr__('Ver Nota de Pedido / Venta (PDF)', 'open-facturarca') . '">Nota de Pedido</a>';
     }
 
     public static function add_customer_sales_button($order) {
@@ -24,7 +24,7 @@ class SalesOrderHandler {
             $url = self::get_download_url($order->get_id());
             ?>
             <div style="margin: 20px 0; padding: 15px; background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px;">
-                <h3 style="margin-top: 0; font-size: 16px;">📋 Comprobante de Pedido / Venta</h3>
+                <h3 style="margin-top: 0; font-size: 16px;">Comprobante de Pedido / Venta</h3>
                 <p style="margin-bottom: 12px; font-size: 14px;">Puede descargar el detalle comercial de su compra en PDF.</p>
                 <a href="<?php echo esc_url($url); ?>" class="button" target="_blank" style="display: inline-block;">
                     Descargar Nota de Pedido (PDF)

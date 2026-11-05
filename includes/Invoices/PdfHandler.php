@@ -16,7 +16,7 @@ class PdfHandler {
     public static function add_admin_order_pdf_button($order) {
         if ($order->get_meta('_arca_cae')) {
             $url = self::get_download_url($order->get_id());
-            echo '<a class="button wc-action-button wc-action-button-invoice" href="' . esc_url($url) . '" target="_blank" title="' . esc_attr__('Ver Factura Electrónica', 'wc-factura-arca') . '">📄 Factura</a>';
+            echo '<a class="button wc-action-button wc-action-button-invoice" href="' . esc_url($url) . '" target="_blank" title="' . esc_attr__('Ver Factura Electrónica', 'open-facturarca') . '">Factura</a>';
         }
     }
 
@@ -25,7 +25,7 @@ class PdfHandler {
             $url = self::get_download_url($order->get_id());
             ?>
             <div style="margin: 20px 0; padding: 15px; background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px;">
-                <h3 style="margin-top: 0; font-size: 16px;">🧾 Factura Electrónica</h3>
+                <h3 style="margin-top: 0; font-size: 16px;">Factura Electrónica</h3>
                 <p style="margin-bottom: 12px; font-size: 14px;">Su comprobante fiscal ha sido emitido y autorizado por ARCA/AFIP.</p>
                 <a href="<?php echo esc_url($url); ?>" class="button" target="_blank" style="display: inline-block;">
                     Descargar Factura Electrónica (PDF)
@@ -55,7 +55,7 @@ class PdfHandler {
             ?>
             <div style="margin: 25px 0; padding: 15px; border: 1px solid #e2e4e7; border-left: 4px solid #2e7d32; background-color: #fcfcfc; border-radius: 4px;">
                 <h3 style="color: #2e7d32; margin-top: 0; font-size: 16px; margin-bottom: 8px;">
-                    🧾 Factura Electrónica Autorizada
+                    Factura Electrónica Autorizada
                 </h3>
                 <p style="margin: 0 0 10px; font-size: 14px; color: #555;">
                     Se ha emitido su <strong><?php echo esc_html($label); ?> N° <?php echo esc_html("{$pto_vta}-{$cbte_nro}"); ?></strong> con CAE N° <strong><?php echo esc_html($cae); ?></strong>.
@@ -316,7 +316,7 @@ class PdfHandler {
         </head>
         <body>
             <div class="no-print" style="max-width: 800px; margin: 0 auto 15px; text-align: right;">
-                <button onclick="window.print()" style="padding: 8px 16px; font-size: 14px; cursor: pointer; font-weight: bold;">🖨 Imprimir / Guardar en PDF (<?php echo count($copies); ?> Copia/s)</button>
+                <button onclick="window.print()" style="padding: 8px 16px; font-size: 14px; cursor: pointer; font-weight: bold;">Imprimir / Guardar en PDF (<?php echo count($copies); ?> Copia/s)</button>
             </div>
 
             <?php foreach ($copies as $copy_name): ?>

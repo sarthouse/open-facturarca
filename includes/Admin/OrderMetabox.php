@@ -52,7 +52,7 @@ class OrderMetabox {
             $send_slip_nonce = wp_create_nonce('wc_arca_mail_slip_' . $order->get_id());
             ?>
             <div class="wc-arca-details" style="font-size: 13px;">
-                <p style="color: #2e7d32; font-weight: bold; margin-bottom: 5px;">✔ Factura Autorizada</p>
+                <p style="color: #2e7d32; font-weight: bold; margin-bottom: 5px;">Comprobante Autorizado</p>
                 <?php if ($company_name): ?>
                     <p style="margin-bottom: 5px;"><strong>Emisor:</strong> <?php echo esc_html($company_name); ?></p>
                 <?php endif; ?>
@@ -64,13 +64,13 @@ class OrderMetabox {
                 <!-- Botones de Acción de Factura y Remito -->
                 <div style="margin-top: 12px; display: flex; flex-direction: column; gap: 6px;">
                     <a href="<?php echo esc_url(\WcArca\Invoices\PdfHandler::get_download_url($order->get_id())); ?>" class="button button-primary" target="_blank" style="text-align: center;">
-                        📄 Ver / Descargar Factura (PDF)
+                        Ver / Descargar Factura (PDF)
                     </a>
                     <a href="<?php echo esc_url(\WcArca\Invoices\SalesOrderHandler::get_download_url($order->get_id())); ?>" class="button" target="_blank" style="text-align: center;">
-                        📋 Ver Nota de Pedido / Venta (PDF)
+                        Ver Nota de Pedido / Venta (PDF)
                     </a>
                     <a href="<?php echo esc_url($slip_url); ?>" class="button" target="_blank" style="text-align: center;">
-                        📦 Ver / Descargar Remito (PDF)
+                        Ver / Descargar Remito (PDF)
                     </a>
                 </div>
             </div>
@@ -101,7 +101,7 @@ class OrderMetabox {
                         <input type="number" step="0.01" max="<?php echo esc_attr($order->get_total()); ?>" name="nc_amount" value="<?php echo esc_attr($order->get_total()); ?>" style="width: 100%;">
                     </p>
                     <button type="submit" class="button" style="width: 100%; border-color: #c62828; color: #c62828;" onclick="return confirm('¿Confirmas la emisión de esta Nota de Crédito en ARCA? Esta acción es irreversible ante el fisco.');">
-                        🧾 Emitir Nota de Crédito
+                        Emitir Nota de Crédito
                     </button>
                 </form>
             </div>
@@ -130,20 +130,19 @@ class OrderMetabox {
                     </p>
 
                     <button type="submit" class="button button-primary" style="width: 100%; text-align: center; margin-bottom: 8px;">
-                        ⚡ Emitir Factura Ahora
+                        Emitir Factura Ahora
                     </button>
                 </form>
 
                 <?php 
                 $slip_url = \WcArca\Invoices\PackingSlipHandler::get_download_url($order->get_id());
-                $send_slip_nonce = wp_create_nonce('wc_arca_mail_slip_' . $order->get_id());
                 ?>
                 <div style="margin-top: 8px; display: flex; flex-direction: column; gap: 5px;">
                     <a href="<?php echo esc_url(\WcArca\Invoices\SalesOrderHandler::get_download_url($order->get_id())); ?>" class="button" target="_blank" style="width: 100%; text-align: center;">
-                        📋 Ver Nota de Pedido / Venta (PDF)
+                        Ver Nota de Pedido / Venta (PDF)
                     </a>
                     <a href="<?php echo esc_url($slip_url); ?>" class="button" target="_blank" style="width: 100%; text-align: center;">
-                        📦 Ver Remito de Entrega (PDF)
+                        Ver Remito de Entrega (PDF)
                     </a>
                 </div>
             </div>

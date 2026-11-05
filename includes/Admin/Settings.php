@@ -41,14 +41,14 @@ class Settings {
             'open-facturarca',
             [__CLASS__, 'render_sidebar_page'],
             'dashicons-media-spreadsheet',
-            56 // Justo debajo de WooCommerce y Productos
+            56
         );
 
         // Submenús directos para acceso rápido
         add_submenu_page(
             'open-facturarca',
             __('Empresas Emisoras', 'open-facturarca'),
-            __('🏢 Empresas', 'open-facturarca'),
+            __('Empresas', 'open-facturarca'),
             'manage_woocommerce',
             'open-facturarca',
             [__CLASS__, 'render_sidebar_page']
@@ -57,7 +57,7 @@ class Settings {
         add_submenu_page(
             'open-facturarca',
             __('Generador de Certificados', 'open-facturarca'),
-            __('🔑 Certificados y CSR', 'open-facturarca'),
+            __('Certificados y CSR', 'open-facturarca'),
             'manage_woocommerce',
             'admin.php?page=wc-settings&tab=arca_invoicing&section=cert_tool'
         );
@@ -65,7 +65,7 @@ class Settings {
         add_submenu_page(
             'open-facturarca',
             __('Estadísticas y Libros', 'open-facturarca'),
-            __('📊 Estadísticas e IVA', 'open-facturarca'),
+            __('Estadísticas e IVA', 'open-facturarca'),
             'manage_woocommerce',
             'admin.php?page=wc-settings&tab=arca_invoicing&section=reports'
         );
@@ -73,7 +73,7 @@ class Settings {
         add_submenu_page(
             'open-facturarca',
             __('Ajustes de Automatización', 'open-facturarca'),
-            __('⚙️ Ajustes', 'open-facturarca'),
+            __('Ajustes', 'open-facturarca'),
             'manage_woocommerce',
             'admin.php?page=wc-settings&tab=arca_invoicing&section=automation'
         );
@@ -99,19 +99,19 @@ class Settings {
         </div>
         <nav class="nav-tab-wrapper woo-nav-tab-wrapper" style="margin-bottom: 20px;">
             <a href="<?php echo esc_url(admin_url('admin.php?page=wc-settings&tab=arca_invoicing&section=companies')); ?>" class="nav-tab <?php echo $current_section === 'companies' ? 'nav-tab-active' : ''; ?>">
-                🏢 Empresas Emisoras (Multi-empresa)
+                Empresas Emisoras (Multi-empresa)
             </a>
             <a href="<?php echo esc_url(admin_url('admin.php?page=wc-settings&tab=arca_invoicing&section=cert_tool')); ?>" class="nav-tab <?php echo $current_section === 'cert_tool' ? 'nav-tab-active' : ''; ?>">
-                🔑 Generador de Clave y CSR
+                Generador de Clave y CSR
             </a>
             <a href="<?php echo esc_url(admin_url('admin.php?page=wc-settings&tab=arca_invoicing&section=automation')); ?>" class="nav-tab <?php echo $current_section === 'automation' ? 'nav-tab-active' : ''; ?>">
-                ⚙️ Ajustes de Automatización
+                Ajustes de Automatización
             </a>
             <a href="<?php echo esc_url(admin_url('admin.php?page=wc-settings&tab=arca_invoicing&section=reports')); ?>" class="nav-tab <?php echo $current_section === 'reports' ? 'nav-tab-active' : ''; ?>">
-                📊 Estadísticas y Libros Contables
+                Estadísticas y Libros Contables
             </a>
             <a href="<?php echo esc_url(admin_url('admin.php?page=wc-settings&tab=arca_invoicing&section=guide')); ?>" class="nav-tab <?php echo $current_section === 'guide' ? 'nav-tab-active' : ''; ?>">
-                📖 Tutorial ARCA / AFIP
+                Tutorial ARCA / AFIP
             </a>
         </nav>
         <?php
@@ -274,7 +274,7 @@ class Settings {
 
         <!-- Botones de Exportación para el Contador -->
         <div style="background: #f6f7f7; padding: 20px; border: 1px solid #ccd0d4; border-radius: 4px; margin-bottom: 25px;">
-            <h3 style="margin-top: 0; color: #1d2327;">📥 Archivos Auxiliares para el Contador / Estudio Contable</h3>
+            <h3 style="margin-top: 0; color: #1d2327;">Archivos Auxiliares para el Contador / Estudio Contable</h3>
             <p style="color: #50575e; font-size: 13px;">Descargue los libros y planillas en formato CSV listos para abrir en Excel o importar en aplicativos de liquidación de impuestos.</p>
             
             <div style="display: flex; gap: 15px; flex-wrap: wrap;">
@@ -284,7 +284,7 @@ class Settings {
                     <input type="hidden" name="end_date" value="<?php echo esc_attr($end_date); ?>">
                     <?php wp_nonce_field('wc_arca_export_reports_nonce'); ?>
                     <button type="submit" class="button button-primary">
-                        📑 Descargar Libro IVA Ventas (CSV)
+                        Descargar Libro IVA Ventas (CSV)
                     </button>
                 </form>
 
@@ -294,7 +294,7 @@ class Settings {
                     <input type="hidden" name="end_date" value="<?php echo esc_attr($end_date); ?>">
                     <?php wp_nonce_field('wc_arca_export_reports_nonce'); ?>
                     <button type="submit" class="button">
-                        🗺️ Descargar Coeficientes IIBB / Provincias (CSV)
+                        Descargar Coeficientes IIBB / Provincias (CSV)
                     </button>
                 </form>
             </div>
@@ -459,7 +459,7 @@ class Settings {
         ?>
         <p style="margin-bottom: 15px;">
             <a href="<?php echo esc_url(admin_url('admin.php?page=wc-settings&tab=arca_invoicing&section=companies&action=new')); ?>" class="button button-primary">
-                ➕ Añadir Nueva Empresa
+                Añadir Nueva Empresa
             </a>
         </p>
 
@@ -492,9 +492,9 @@ class Settings {
                     </td>
                     <td>
                         <?php if ($cert_ok && $key_ok): ?>
-                            <span style="color: #2e7d32; font-weight: bold;">✔ Configurados</span>
+                            <span style="color: #2e7d32; font-weight: bold;">Configurados</span>
                         <?php else: ?>
-                            <span style="color: #c62828;">⚠ Faltan certificados</span>
+                            <span style="color: #c62828;">Faltan certificados</span>
                         <?php endif; ?>
                     </td>
                     <td>
@@ -518,7 +518,7 @@ class Settings {
     private static function render_cert_tool_view() {
         ?>
         <div style="background: #fff; padding: 20px; border: 1px solid #ccd0d4; border-radius: 4px; max-width: 800px;">
-            <h3>🔑 Generador Automático de Clave Privada y CSR</h3>
+            <h3>Generador Automático de Clave Privada y CSR</h3>
             <p>Este asistente genera directamente la clave criptográfica y la solicitud de certificado (CSR) para subir al portal de ARCA/AFIP sin usar comandos de terminal.</p>
 
             <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
@@ -537,13 +537,13 @@ class Settings {
                 </table>
 
                 <p>
-                    <button type="submit" class="button button-primary">⚡ Generar Clave y CSR Ahora</button>
+                    <button type="submit" class="button button-primary">Generar Clave y CSR Ahora</button>
                 </p>
             </form>
 
             <hr style="margin: 25px 0;">
 
-            <h3>📤 Subir Certificado (.crt) obtenido de ARCA</h3>
+            <h3>Subir Certificado (.crt) obtenido de ARCA</h3>
             <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" enctype="multipart/form-data">
                 <input type="hidden" name="action" value="wc_arca_upload_certificate">
                 <?php wp_nonce_field('wc_arca_upload_cert_nonce'); ?>
@@ -579,7 +579,7 @@ class Settings {
     private static function render_tutorial_view() {
         ?>
         <div style="background: #fff; padding: 25px; border: 1px solid #ccd0d4; border-radius: 4px; max-width: 900px; font-size: 14px; line-height: 1.6;">
-            <h2 style="margin-top: 0;">📖 Proceso Completo de Generación de Certificados en ARCA / AFIP</h2>
+            <h2 style="margin-top: 0;">Proceso Completo de Generación de Certificados en ARCA / AFIP</h2>
             
             <p>Para emitir facturas legales en Argentina, ARCA exige que cada sistema esté autenticado mediante un <strong>Certificado Digital X.509</strong>. El procedimiento consta de 4 pasos:</p>
 

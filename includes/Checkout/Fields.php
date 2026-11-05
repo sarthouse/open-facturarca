@@ -194,7 +194,7 @@ class Fields {
                 if (val.length === 11) {
                     clearTimeout(timeout);
                     var $field = $(this).closest('.form-row');
-                    $field.append('<span id="wc-arca-cuit-badge" style="font-size:12px; color:#666; margin-top:4px; display:block;">🔍 Consultando condición en ARCA...</span>');
+                    $field.append('<span id="wc-arca-cuit-badge" style="font-size:12px; color:#666; margin-top:4px; display:block;">Consultando condición en ARCA...</span>');
 
                     timeout = setTimeout(function() {
                         $.post('<?php echo admin_url('admin-ajax.php'); ?>', {
@@ -203,7 +203,7 @@ class Fields {
                             security: '<?php echo wp_create_nonce('wc_arca_checkout_nonce'); ?>'
                         }, function(res) {
                             if (res.success && res.data.is_cuit) {
-                                var badgeText = '✔ Detectado: ' + res.data.label;
+                                var badgeText = 'Detectado: ' + res.data.label;
                                 if (res.data.name) badgeText += ' (' + res.data.name + ')';
                                 $('#wc-arca-cuit-badge').css('color', '#2e7d32').text(badgeText);
                             }

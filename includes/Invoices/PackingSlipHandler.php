@@ -13,7 +13,7 @@ class PackingSlipHandler {
 
     public static function add_admin_order_slip_button($order) {
         $url = self::get_download_url($order->get_id());
-        echo '<a class="button wc-action-button" href="' . esc_url($url) . '" target="_blank" title="' . esc_attr__('Ver Remito de Entrega (Letra X)', 'open-facturarca') . '">📦 Remito</a>';
+        echo '<a class="button wc-action-button" href="' . esc_url($url) . '" target="_blank" title="' . esc_attr__('Ver Remito de Entrega (Letra X)', 'open-facturarca') . '">Remito</a>';
     }
 
     public static function get_download_url($order_id) {
@@ -200,7 +200,7 @@ class PackingSlipHandler {
         </head>
         <body>
             <div class="no-print" style="max-width: 800px; margin: 0 auto 15px; text-align: right;">
-                <button onclick="window.print()" style="padding: 8px 16px; font-size: 14px; cursor: pointer; font-weight: bold;">🖨 Imprimir Remito (<?php echo count($copies); ?> Copia/s)</button>
+                <button onclick="window.print()" style="padding: 8px 16px; font-size: 14px; cursor: pointer; font-weight: bold;">Imprimir Remito (<?php echo count($copies); ?> Copia/s)</button>
             </div>
 
             <?php foreach ($copies as $copy_name): ?>
@@ -232,7 +232,7 @@ class PackingSlipHandler {
 
                 <div class="row" style="margin-bottom: 20px;">
                     <div class="col" style="background: #fafafa; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
-                        <p style="margin: 0 0 5px; font-weight: bold; border-bottom: 1px solid #eee; padding-bottom: 3px;">📍 Datos de Envío y Destinatario:</p>
+                        <p style="margin: 0 0 5px; font-weight: bold; border-bottom: 1px solid #eee; padding-bottom: 3px;">Datos de Envío y Destinatario:</p>
                         <p style="margin: 0; font-size: 12px; line-height: 1.4;">
                             <strong>Destinatario:</strong> <?php echo esc_html($order->get_formatted_shipping_full_name() ?: $order->get_formatted_billing_full_name()); ?><br>
                             <strong>Teléfono:</strong> <?php echo esc_html($order->get_billing_phone() ?: '-'); ?><br>
@@ -240,7 +240,7 @@ class PackingSlipHandler {
                         </p>
                     </div>
                     <div class="col" style="background: #fafafa; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
-                        <p style="margin: 0 0 5px; font-weight: bold; border-bottom: 1px solid #eee; padding-bottom: 3px;">📦 Datos del Pedido:</p>
+                        <p style="margin: 0 0 5px; font-weight: bold; border-bottom: 1px solid #eee; padding-bottom: 3px;">Datos del Pedido:</p>
                         <p style="margin: 0; font-size: 12px; line-height: 1.4;">
                             <strong>Pedido WooCommerce:</strong> #<?php echo $order_id; ?><br>
                             <strong>Método de Envío:</strong> <?php echo esc_html($order->get_shipping_method() ?: 'Estándar'); ?><br>
