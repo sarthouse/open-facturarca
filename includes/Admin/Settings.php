@@ -414,7 +414,7 @@ class Settings {
                             <th><label>Ruta Certificado (.crt)</label></th>
                             <td>
                                 <input type="text" name="cert_path" value="<?php echo esc_attr($company_to_edit['cert_path'] ?? ''); ?>" class="large-text">
-                                <p class="description">Ruta absoluta del archivo descargado de ARCA (ej: <code><?php echo WC_ARCA_PLUGIN_DIR . 'certs/' . ($company_to_edit['cuit'] ?? 'empresa') . '.crt'; ?></code>).</p>
+                                <p class="description">Ruta absoluta del archivo descargado de ARCA (ej: <code><?php echo OPEN_FACTURARCA_DIR . 'certs/' . ($company_to_edit['cuit'] ?? 'empresa') . '.crt'; ?></code>).</p>
                             </td>
                         </tr>
                         <tr>
@@ -668,7 +668,7 @@ class Settings {
             $pair = CertGenerator::generate_key_and_csr($company_name, $cuit);
 
             // Guardar clave privada en directorio protegido certs/
-            $key_file = WC_ARCA_PLUGIN_DIR . "certs/{$cuit}.key";
+            $key_file = OPEN_FACTURARCA_DIR . "certs/{$cuit}.key";
             file_put_contents($key_file, $pair['private_key']);
 
             // Entregar el CSR para descarga en el navegador
@@ -706,11 +706,11 @@ class Settings {
                 wp_die(__('El archivo subido no es un certificado X.509 válido.', 'wc-factura-arca'), 400);
             }
 
-            $target_file = WC_ARCA_PLUGIN_DIR . "certs/{$company['cuit']}.crt";
+            $target_file = OPEN_FACTURARCA_DIR . "certs/{$company['cuit']}.crt";
             move_uploaded_file($_FILES['cert_file']['tmp_name'], $target_file);
 
             $company['cert_path'] = $target_file;
-            $company['key_path']  = WC_ARCA_PLUGIN_DIR . "certs/{$company['cuit']}.key";
+            $company['key_path']  = OPEN_FACTURARCA_DIR . "certs/{$company['cuit']}.key";
             CompanyManager::save_company($company);
         }
 

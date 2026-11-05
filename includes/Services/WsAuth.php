@@ -9,7 +9,7 @@ class WsAuth {
 
     public function __construct($company = null) {
         $this->company   = $company ?: CompanyManager::get_default_company();
-        $this->token_dir = WC_ARCA_PLUGIN_DIR . 'storage/tokens/';
+        $this->token_dir = OPEN_FACTURARCA_DIR . 'storage/tokens/';
 
         if (!is_dir($this->token_dir)) {
             wp_mkdir_p($this->token_dir);

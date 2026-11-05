@@ -22,8 +22,8 @@ class CompanyManager {
                 'tax_condition' => get_option('wc_arca_issuer_tax_condition', 'monotributo'),
                 'pto_vta'       => (int) get_option('wc_arca_pto_vta', 1),
                 'environment'   => get_option('wc_arca_environment', 'testing'),
-                'cert_path'     => get_option('wc_arca_cert_path', WC_ARCA_PLUGIN_DIR . 'certs/default.crt'),
-                'key_path'      => get_option('wc_arca_key_path', WC_ARCA_PLUGIN_DIR . 'certs/default.key'),
+                'cert_path'     => get_option('wc_arca_cert_path', OPEN_FACTURARCA_DIR . 'certs/default.crt'),
+                'key_path'      => get_option('wc_arca_key_path', OPEN_FACTURARCA_DIR . 'certs/default.key'),
             ];
             update_option(self::OPTION_COMPANIES, $companies);
             update_option(self::OPTION_DEFAULT_COMPANY, $default_id);
