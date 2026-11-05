@@ -68,13 +68,32 @@ class InvoiceTrigger {
             $receiver_condition = $order->get_meta('_billing_tax_condition') ?: 'consumidor_final';
 
             $doc_nro = $order->get_meta('_billing_dni') 
-                ?: ($order->get_meta('billing_dni') ?: ($order->get_meta('_billing_doc_number') ?: '0'));
-            $clean_doc = preg_replace('/[^0-9]/', '', $doc_nro);
-            $doc_tipo  = (strlen($clean_doc) === 11) ? 80 : 96;
+                ?: ($order->get_meta('billing_dni') ?: ($order->get_meta('_billing_doc_number') ?: ''));
+            $clean_doc = preg_replace('/[^0-9]/', '', (string)$doc_nro);
+
+            // Determinar Tipo de Documento y aplicar Fallback a DocTipo 99 (Sin Identificar)
+            $total = (float) $order->get_total();
+
+            if (empty($clean_doc) || $clean_doc === '0') {
+                if ($receiver_condition === 'responsable_inscripto') {
+                    throw new \Exception(__('Para emitir Factura A es obligatorio ingresar un CUIT válido del cliente.', 'open-facturarca'));
+                }
+
+                // Tope legal de ARCA para ventas a Consumidor Final sin identificar (Tope actualizado por IPC)
+                $max_anonymous_limit = 350000;
+                if ($total >= $max_anonymous_limit) {
+                    throw new \Exception(sprintf(__('Para montos superiores a $%s, ARCA exige identificar al cliente con su DNI o CUIT.', 'open-facturarca'), number_format($max_anonymous_limit, 2, ',', '.')));
+                }
+
+                // Fallback oficial ARCA: Tipo 99 (Sin identificar / Venta Global Diaria)
+                $doc_tipo  = 99;
+                $clean_doc = '0';
+            } else {
+                $doc_tipo  = (strlen($clean_doc) === 11) ? 80 : 96;
+            }
 
             $cbte_tipo = TaxResolver::resolve_cbte_tipo($issuer_condition, $receiver_condition, 'invoice');
 
-            $total = (float) $order->get_total();
             $iva_total = (float) $order->get_total_tax();
 
             $iva_array = [];

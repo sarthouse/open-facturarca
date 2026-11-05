@@ -16,8 +16,9 @@ class Fields {
         // Guardar campos en los metadatos de la orden
         add_action('woocommerce_checkout_create_order', [__CLASS__, 'save_order_fields'], 10, 2);
 
-        // Mostrar en la vista del pedido en admin
+        // Mostrar y editar en la vista del pedido en admin
         add_action('woocommerce_admin_order_data_after_billing_address', [__CLASS__, 'display_admin_order_fields'], 10, 1);
+        add_action('woocommerce_process_shop_order_meta', [__CLASS__, 'save_admin_order_fields'], 10, 1);
 
         // Endpoint AJAX para chequear CUIT en tiempo real en el checkout
         add_action('wp_ajax_wc_arca_check_cuit', [__CLASS__, 'ajax_check_cuit']);
@@ -141,19 +142,69 @@ class Fields {
 
     public static function display_admin_order_fields($order) {
         $tax_condition = $order->get_meta('_billing_tax_condition') ?: 'consumidor_final';
-        $dni           = $order->get_meta('_billing_dni') ?: $order->get_meta('billing_dni');
+        $dni           = $order->get_meta('_billing_dni') ?: ($order->get_meta('billing_dni') ?: $order->get_meta('_billing_doc_number'));
         $doc_type      = $order->get_meta('_billing_doc_type') ?: (strlen($dni) === 11 ? 80 : 96);
         $tax_name      = $order->get_meta('_billing_tax_name');
 
         $doc_name = ($doc_type == 80) ? 'CUIT' : 'DNI';
 
+        echo '<div class="address">';
         echo '<p><strong>' . __('Datos Fiscales (ARCA):', 'open-facturarca') . '</strong><br>';
-        echo esc_html($doc_name) . ': ' . esc_html($dni ?: 'No especificado') . '<br>';
+        echo esc_html($doc_name) . ': ' . esc_html($dni ?: 'No especificado (Fallback: Consumidor Final sin identificar)') . '<br>';
         echo __('Condición IVA: ', 'open-facturarca') . '<strong>' . esc_html(ucfirst(str_replace('_', ' ', $tax_condition))) . '</strong>';
         if ($tax_name) {
             echo '<br>' . __('Padrón ARCA: ', 'open-facturarca') . esc_html($tax_name);
         }
         echo '</p>';
+        echo '</div>';
+
+        // Campos editables cuando se hace clic en el lápiz de edición de facturación
+        echo '<div class="edit_address">';
+        woocommerce_wp_text_input([
+            'id'          => '_billing_dni',
+            'label'       => __('DNI o CUIT (ARCA):', 'open-facturarca'),
+            'value'       => $dni,
+            'description' => __('Número sin puntos ni guiones. Si es CUIT de 11 dígitos, se valida automáticamente.', 'open-facturarca'),
+            'wrapper_class' => 'form-field-wide',
+        ]);
+
+        woocommerce_wp_select([
+            'id'      => '_billing_tax_condition',
+            'label'   => __('Condición IVA:', 'open-facturarca'),
+            'value'   => $tax_condition,
+            'options' => [
+                'consumidor_final'      => __('Consumidor Final', 'open-facturarca'),
+                'responsable_inscripto' => __('Responsable Inscripto', 'open-facturarca'),
+                'monotributo'           => __('Monotributo', 'open-facturarca'),
+                'exento'                => __('Exento', 'open-facturarca'),
+            ],
+            'wrapper_class' => 'form-field-wide',
+        ]);
+        echo '</div>';
+    }
+
+    public static function save_admin_order_fields($order_id) {
+        $order = wc_get_order($order_id);
+        if (!$order) return;
+
+        if (isset($_POST['_billing_dni'])) {
+            $raw_doc = sanitize_text_field($_POST['_billing_dni']);
+            $clean_doc = preg_replace('/[^0-9]/', '', $raw_doc);
+            $order->update_meta_data('_billing_dni', $clean_doc);
+            $order->update_meta_data('billing_dni', $clean_doc);
+
+            if (strlen($clean_doc) === 11) {
+                $order->update_meta_data('_billing_doc_type', 80);
+            } elseif (!empty($clean_doc)) {
+                $order->update_meta_data('_billing_doc_type', 96);
+            }
+        }
+
+        if (isset($_POST['_billing_tax_condition'])) {
+            $order->update_meta_data('_billing_tax_condition', sanitize_text_field($_POST['_billing_tax_condition']));
+        }
+
+        $order->save();
     }
 
     /**

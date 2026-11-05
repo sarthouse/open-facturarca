@@ -92,7 +92,7 @@ class DompdfRenderer {
         .header-col-right {
             width: 50%;
             vertical-align: top;
-            padding: 8px 12px 8px 24px;
+            padding: 8px 12px 8px 32px;
         }
         .header-badge-box {
             position: absolute;
