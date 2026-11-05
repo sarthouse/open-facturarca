@@ -127,6 +127,17 @@ class Settings {
         } else {
             woocommerce_admin_fields(self::get_automation_settings());
         }
+
+        // Ocultar el botón rojo global de WooCommerce "Guardar los cambios" en pestañas que no lo necesitan
+        if ($current_section !== 'automation') {
+            ?>
+            <style type="text/css">
+                p.submit, .woocommerce-save-button, button[name="save"] {
+                    display: none !important;
+                }
+            </style>
+            <?php
+        }
     }
 
     public static function get_automation_settings() {
