@@ -598,10 +598,14 @@ class Settings {
                     </ul>
                 </li>
                 <li style="margin-bottom: 15px;">
-                    <strong>Paso 3: Autorizar el Servicio de Facturación Electrónica (wsfe)</strong><br>
+                    <strong>Paso 3: Autorizar los Servicios Web en ARCA / AFIP (Facturación y Padrón)</strong><br>
                     En el portal de AFIP, entra en <em>"Administrador de Relaciones de Clave Fiscal"</em>:
-                    <br>Selecciona <strong>"Nueva Relación" > Buscar Servicio > ARCA/AFIP > WebServices > Facturación Electrónica</strong>.
-                    <br>En el campo "Representante", selecciona el Alias/Certificado que diste de alta en el Paso 2.
+                    <br>Selecciona <strong>"Nueva Relación" > Buscar Servicio > ARCA/AFIP > WebServices</strong>:
+                    <ul style="margin-top: 5px; padding-left: 20px;">
+                        <li><strong>Servicio 1 (Obligatorio para emitir facturas):</strong> Busca y autoriza <strong>"Facturación Electrónica"</strong> (servicio <code>wsfe</code>).</li>
+                        <li><strong>Servicio 2 (Para autodetección automática de IVA y CUIT de clientes):</strong> Busca y autoriza <strong>"Consulta de Padrón A5"</strong> (o <em>"ws_sr_constancia_inscripcion" / "Servicio de Padrón"</em>).</li>
+                    </ul>
+                    En ambos servicios, en el campo "Representante", selecciona el Alias/Certificado que diste de alta en el Paso 2.
                 </li>
                 <li style="margin-bottom: 15px;">
                     <strong>Paso 4: Crear el Punto de Venta</strong><br>
