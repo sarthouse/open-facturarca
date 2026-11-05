@@ -75,9 +75,23 @@ class ReportsHandler {
             if ($tipo === 1) $count_by_type['Factura A']++;
             elseif ($tipo === 6) $count_by_type['Factura B']++;
             elseif ($tipo === 11) $count_by_type['Factura C']++;
-            elseif ($tipo === 3 || $tipo === 8 || $tipo === 13) $count_by_type['Notas de Crédito']++;
 
-            // Mapeo por Provincia (billing_state)
+            // Descontar Notas de Crédito emitidas para este pedido
+            $total_nc_order = 0;
+            $credit_notes = $order->get_meta('_arca_credit_notes') ?: [];
+            foreach ($credit_notes as $nc) {
+                $nc_importe = (float)($nc['importe'] ?? 0);
+                $nc_neto    = ($tipo === 11) ? $nc_importe : round($nc_importe / 1.21, 2);
+                $nc_iva     = $nc_importe - $nc_neto;
+
+                $total_invoiced -= $nc_importe;
+                $total_neto     -= $nc_neto;
+                $total_iva      -= $nc_iva;
+                $total_nc_order += $nc_importe;
+                $count_by_type['Notas de Crédito']++;
+            }
+
+            // Mapeo por Provincia (billing_state) para Coeficientes de Convenio Multilateral / IIBB
             $state_code = $order->get_billing_state() ?: 'CF';
             $state_name = WC()->countries->get_states('AR')[$state_code] ?? $state_code;
 
@@ -89,7 +103,8 @@ class ReportsHandler {
                     'count'  => 0,
                 ];
             }
-            $by_province[$state_code]['total'] += $total;
+            // Facturación neta atribuible a la jurisdicción (Factura menos Notas de Crédito)
+            $by_province[$state_code]['total'] += ($total - $total_nc_order);
             $by_province[$state_code]['count']++;
         }
 
@@ -190,6 +205,46 @@ class ReportsHandler {
                 $order->get_meta('_arca_cae_vto'),
                 $order->get_id(),
             ], ';');
+
+            // Exportar filas de Notas de Crédito emitidas para este pedido en el Libro IVA Ventas
+            $credit_notes = $order->get_meta('_arca_credit_notes') ?: [];
+            foreach ($credit_notes as $nc) {
+                $nc_fch = (string)($nc['cbte_fch'] ?? '');
+                $nc_fch_fmt = strlen($nc_fch) === 8 
+                    ? substr($nc_fch, 6, 2) . '/' . substr($nc_fch, 4, 2) . '/' . substr($nc_fch, 0, 4) 
+                    : (!empty($nc_fch) ? date('d/m/Y', strtotime($nc_fch)) : $fch_fmt);
+
+                $nc_tipo = (int)($nc['cbte_tipo'] ?? 0);
+                $nc_label = TaxResolver::get_cbte_label($nc_tipo);
+                $nc_pto_vta = sprintf('%04d', $nc['pto_vta'] ?? 0);
+                $nc_nro = sprintf('%08d', $nc['cbte_nro'] ?? 0);
+
+                $nc_total = (float)($nc['importe'] ?? 0);
+                $nc_neto  = ($cbte_tipo === 11 || $nc_tipo === 13) ? $nc_total : round($nc_total / 1.21, 2);
+                $nc_iva   = round($nc_total - $nc_neto, 2);
+
+                // En el Libro IVA Ventas, las Notas de Crédito se declaran restando (números en negativo)
+                fputcsv($out, [
+                    $nc_fch_fmt,
+                    $nc_label,
+                    $nc_pto_vta,
+                    $nc_nro,
+                    $nc_nro,
+                    $doc_tipo == 80 ? '80 (CUIT)' : '96 (DNI)',
+                    $doc_nro,
+                    $nombre,
+                    $cond_iva,
+                    '-' . number_format($nc_total, 2, ',', ''),
+                    '0,00',
+                    '0,00',
+                    '-' . number_format($nc_neto, 2, ',', ''),
+                    ($cbte_tipo === 11 || $nc_tipo === 13) ? '0%' : '21%',
+                    '-' . number_format($nc_iva, 2, ',', ''),
+                    $nc['cae'] ?? '-',
+                    $nc['cae_vto'] ?? '-',
+                    $order->get_id(),
+                ], ';');
+            }
         }
 
         fclose($out);

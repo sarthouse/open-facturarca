@@ -89,8 +89,38 @@ class PdfHandler {
         return add_query_arg($args, home_url('/'));
     }
 
+    public static function get_credit_note_download_url($order_id, $nc_index = 0) {
+        $order = is_numeric($order_id) ? wc_get_order($order_id) : $order_id;
+        $id = $order ? $order->get_id() : (int) $order_id;
+        $order_key = $order ? $order->get_order_key() : '';
+
+        $nonce = wp_create_nonce('wc_arca_view_nc_' . $id . '_' . $nc_index);
+        $args = [
+            'wc_arca_action' => 'download_credit_note',
+            'order_id'       => $id,
+            'nc_index'       => $nc_index,
+            'nonce'          => $nonce,
+        ];
+        if ($order_key) {
+            $args['order_key'] = $order_key;
+        }
+
+        return add_query_arg($args, home_url('/'));
+    }
+
     public static function handle_pdf_download() {
-        if (!isset($_GET['wc_arca_action']) || $_GET['wc_arca_action'] !== 'download_invoice') {
+        if (!isset($_GET['wc_arca_action'])) {
+            return;
+        }
+
+        $action = sanitize_text_field($_GET['wc_arca_action']);
+
+        if ($action === 'download_credit_note') {
+            self::handle_credit_note_download();
+            return;
+        }
+
+        if ($action !== 'download_invoice') {
             return;
         }
 
@@ -233,6 +263,173 @@ class PdfHandler {
             $template_file = OPEN_FACTURARCA_DIR . 'templates/invoice-a.php';
         } elseif ($letra === 'B') {
             $template_file = OPEN_FACTURARCA_DIR . 'templates/invoice-b.php';
+        }
+
+        $full_html = '';
+
+        foreach ($copies as $copy_name) {
+            ob_start();
+            if (file_exists($template_file)) {
+                include $template_file;
+            }
+            $full_html .= ob_get_clean();
+        }
+
+        return DompdfRenderer::render_html_to_pdf($full_html);
+    }
+
+    public static function handle_credit_note_download() {
+        $order_id  = absint($_GET['order_id'] ?? 0);
+        $nc_index  = absint($_GET['nc_index'] ?? 0);
+        $nonce     = sanitize_text_field($_GET['nonce'] ?? '');
+        $order_key = sanitize_text_field($_GET['order_key'] ?? '');
+
+        if (!$order_id || !wp_verify_nonce($nonce, 'wc_arca_view_nc_' . $order_id . '_' . $nc_index)) {
+            wp_die(__('Enlace de descarga inválido o expirado.', 'open-facturarca'), 403);
+        }
+
+        $order = wc_get_order($order_id);
+        if (!$order) {
+            wp_die(__('Pedido no encontrado.', 'open-facturarca'), 404);
+        }
+
+        $current_user_id = get_current_user_id();
+        $is_admin = current_user_can('manage_woocommerce');
+        $is_owner = ($current_user_id > 0 && $current_user_id === $order->get_customer_id());
+        $is_guest_with_key = (!empty($order_key) && hash_equals($order->get_order_key(), $order_key));
+
+        if (!$is_admin && !$is_owner && !$is_guest_with_key) {
+            wp_die(__('No tienes permisos para descargar este comprobante.', 'open-facturarca'), 403);
+        }
+
+        $credit_notes = $order->get_meta('_arca_credit_notes') ?: [];
+        if (!isset($credit_notes[$nc_index])) {
+            wp_die(__('Nota de Crédito no encontrada.', 'open-facturarca'), 404);
+        }
+
+        $nc = $credit_notes[$nc_index];
+        $pdf_content = self::build_credit_note_pdf($order, $nc);
+
+        $cbte_tipo = (int)$nc['cbte_tipo'];
+        $letra = ($cbte_tipo === 3) ? 'A' : (($cbte_tipo === 8) ? 'B' : 'C');
+        $pto_vta = sprintf('%04d', $nc['pto_vta']);
+        $cbte_nro = sprintf('%08d', $nc['cbte_nro']);
+        $filename = "Nota_Credito_{$letra}_{$pto_vta}-{$cbte_nro}.pdf";
+
+        header('Content-Type: application/pdf');
+        header('Content-Disposition: inline; filename="' . $filename . '"');
+        header('Content-Length: ' . strlen($pdf_content));
+        echo $pdf_content;
+        exit;
+    }
+
+    /**
+     * Generador de PDF nativo binario de Nota de Crédito
+     */
+    public static function build_credit_note_pdf($order, $nc) {
+        $copies_mode = get_option('wc_arca_invoice_copies', 'original');
+        $copies = ['ORIGINAL'];
+        if ($copies_mode === 'duplicado') {
+            $copies = ['ORIGINAL', 'DUPLICADO'];
+        }
+
+        $company_id    = $order->get_meta('_arca_company_id');
+        $company       = $company_id ? CompanyManager::get_company($company_id) : CompanyManager::get_default_company();
+
+        $pto_vta       = sprintf('%04d', $nc['pto_vta']);
+        $cbte_nro      = sprintf('%08d', $nc['cbte_nro']);
+        $cbte_tipo     = (int) $nc['cbte_tipo'];
+        $cbte_fch      = (string) ($nc['cbte_fch'] ?? '');
+        $cae           = (string) ($nc['cae'] ?? '');
+        $cae_vto       = (string) ($nc['cae_vto'] ?? '');
+        $amount        = (float) ($nc['importe'] ?? 0);
+
+        $cuit_emisor   = $company['cuit'] ?? '';
+        $razon_social  = $company['name'] ?? '';
+        $nombre_emisor = !empty($company['trade_name']) ? $company['trade_name'] : $razon_social;
+        $cond_emisor   = $company['tax_condition'] ?? 'monotributo';
+        $iibb_emisor   = $company['iibb'] ?? '';
+        $fch_inicio    = !empty($company['activity_init']) ? date('d/m/Y', strtotime($company['activity_init'])) : '-';
+
+        $voucher_title = TaxResolver::get_cbte_label($cbte_tipo);
+        $letra = ($cbte_tipo === 3) ? 'A' : (($cbte_tipo === 8) ? 'B' : 'C');
+
+        $clean_doc = $order->get_meta('_billing_dni') ?: ($order->get_meta('_billing_doc_number') ?: ($order->get_meta('billing_dni') ?: '-'));
+        $address_data = DompdfRenderer::get_order_address_fields($order, 'billing');
+        $domicilio = $address_data['domicilio'];
+        $localidad = $address_data['localidad'];
+        $provincia = $address_data['provincia'];
+
+        $raw_client_tax_cond = $order->get_meta('_billing_tax_condition') ?: 'consumidor_final';
+        $cond_cliente = TaxResolver::get_tax_condition_label($raw_client_tax_cond);
+
+        // Datos del comprobante original asociado
+        $orig_cbte_tipo = (int) $order->get_meta('_arca_cbte_tipo');
+        $asoc_tipo_label = TaxResolver::get_cbte_label($orig_cbte_tipo);
+        $asoc_pto_vta = sprintf('%04d', $order->get_meta('_arca_pto_vta'));
+        $asoc_cbte_nro = sprintf('%08d', $order->get_meta('_arca_cbte_nro'));
+
+        // Generar QR de la Nota de Crédito
+        $fch_qr = strlen($cbte_fch) === 8 ? substr($cbte_fch, 0, 4) . '-' . substr($cbte_fch, 4, 2) . '-' . substr($cbte_fch, 6, 2) : date('Y-m-d');
+        $qr_data = [
+            'ver'       => 1,
+            'fecha'     => $fch_qr,
+            'cuit'      => (float) $cuit_emisor,
+            'ptoVta'    => (int) $pto_vta,
+            'tipoCmp'   => $cbte_tipo,
+            'nroCmp'    => (int) $cbte_nro,
+            'importe'   => $amount,
+            'moneda'    => 'PES',
+            'ctz'       => 1,
+            'tipoDocRec'=> (int) ($order->get_meta('_billing_doc_type') ?: 96),
+            'nroDocRec' => (float) (preg_replace('/[^0-9]/', '', $clean_doc) ?: 0),
+            'tipoCodAut'=> 'E',
+            'codAut'    => (float) $cae,
+        ];
+        $qr_encoded = base64_encode(json_encode($qr_data));
+        $qr_url = "https://www.afip.gob.ar/fe/qr/?p=" . $qr_encoded;
+        $qr_image_url = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" . urlencode($qr_url);
+
+        $neto = round($amount / 1.21, 2);
+        $iva_contenido = round($amount - $neto, 2);
+
+        $data = [
+            'order'            => $order,
+            'company'          => $company,
+            'nc'               => $nc,
+            'pto_vta'          => $pto_vta,
+            'cbte_nro'         => $cbte_nro,
+            'cbte_tipo'        => $cbte_tipo,
+            'cbte_fch_fmt'     => !empty($cbte_fch) ? (strlen($cbte_fch) === 8 ? substr($cbte_fch, 6, 2) . '/' . substr($cbte_fch, 4, 2) . '/' . substr($cbte_fch, 0, 4) : date('d/m/Y', strtotime($cbte_fch))) : date('d/m/Y'),
+            'voucher_title'    => $voucher_title,
+            'letra'            => $letra,
+            'cuit_emisor'      => $cuit_emisor,
+            'razon_social'     => $razon_social,
+            'nombre_emisor'    => $nombre_emisor,
+            'cond_emisor'      => $cond_emisor,
+            'cond_cliente'     => $cond_cliente,
+            'iibb_emisor'      => $iibb_emisor,
+            'fch_inicio'       => $fch_inicio,
+            'clean_doc'        => $clean_doc,
+            'domicilio'        => $domicilio,
+            'localidad'        => $localidad,
+            'provincia'        => $provincia,
+            'cae'              => $cae,
+            'cae_vto_fmt'      => !empty($cae_vto) ? (strlen($cae_vto) === 8 ? substr($cae_vto, 6, 2) . '/' . substr($cae_vto, 4, 2) . '/' . substr($cae_vto, 0, 4) : date('d/m/Y', strtotime($cae_vto))) : '-',
+            'amount'           => $amount,
+            'neto'             => $neto,
+            'iva_contenido'    => $iva_contenido,
+            'asoc_tipo_label'  => $asoc_tipo_label,
+            'asoc_pto_vta'     => $asoc_pto_vta,
+            'asoc_cbte_nro'    => $asoc_cbte_nro,
+            'qr_image_url'     => $qr_image_url,
+        ];
+
+        $template_file = OPEN_FACTURARCA_DIR . 'templates/credit-note-c.php';
+        if ($letra === 'A') {
+            $template_file = OPEN_FACTURARCA_DIR . 'templates/credit-note-a.php';
+        } elseif ($letra === 'B') {
+            $template_file = OPEN_FACTURARCA_DIR . 'templates/credit-note-b.php';
         }
 
         $full_html = '';

@@ -101,12 +101,19 @@ class OrderMetabox {
             <?php if (!empty($credit_notes)): ?>
                 <div style="border-top: 1px dashed #ccc; padding-top: 10px; margin-top: 10px;">
                     <p style="color: #c62828; font-weight: bold; margin-bottom: 5px;">Notas de Crédito Emitidas:</p>
-                    <ul style="margin: 0; padding-left: 15px; font-size: 12px;">
-                        <?php foreach ($credit_notes as $nc): 
+                    <ul style="margin: 0; padding-left: 0; list-style: none; font-size: 11.5px;">
+                        <?php foreach ($credit_notes as $nc_idx => $nc): 
                             $nc_label = TaxResolver::get_cbte_label($nc['cbte_tipo']);
                             $nc_nro = sprintf('%04d-%08d', $nc['pto_vta'], $nc['cbte_nro']);
+                            $nc_url = \WcArca\Invoices\PdfHandler::get_credit_note_download_url($order->get_id(), $nc_idx);
                         ?>
-                            <li><strong><?php echo esc_html($nc_label); ?> <?php echo esc_html($nc_nro); ?></strong> ($<?php echo number_format($nc['importe'], 2, ',', '.'); ?>) - CAE: <?php echo esc_html($nc['cae']); ?></li>
+                            <li style="margin-bottom: 6px; padding-bottom: 6px; border-bottom: 1px dotted #e0e0e0;">
+                                <strong><?php echo esc_html($nc_label); ?> <?php echo esc_html($nc_nro); ?></strong><br>
+                                Importe: $<?php echo number_format($nc['importe'], 2, ',', '.'); ?> | CAE: <?php echo esc_html($nc['cae']); ?><br>
+                                <a href="<?php echo esc_url($nc_url); ?>" class="button button-small" target="_blank" style="margin-top: 3px;">
+                                    Descargar Nota de Crédito (PDF)
+                                </a>
+                            </li>
                         <?php endforeach; ?>
                     </ul>
                 </div>
