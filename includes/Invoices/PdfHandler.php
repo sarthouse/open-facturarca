@@ -179,39 +179,44 @@ class PdfHandler {
 
             // Encabezado Emisor (Izquierda)
             $logo_url = $company['logo_url'] ?? '';
-            $start_y = 36;
+            $start_y = 34;
 
             if (!empty($logo_url)) {
-                $pdf->text(30, 36, '[' . substr($nombre_emisor, 0, 28) . ']', 10, true);
-                $start_y = 48;
+                $has_logo = $pdf->image($logo_url, 30, 26, 120, 38);
+                if ($has_logo) {
+                    $start_y = 68;
+                } else {
+                    $pdf->text(30, $start_y, substr($nombre_emisor, 0, 26), 12, true);
+                    $start_y += 13;
+                }
             } else {
-                $pdf->text(30, $start_y, substr($nombre_emisor, 0, 32), 12, true);
-                $start_y += 12;
+                $pdf->text(30, $start_y, substr($nombre_emisor, 0, 26), 12, true);
+                $start_y += 13;
             }
 
-            if (!empty($company['trade_name']) && !empty($razon_social) && $company['trade_name'] !== $razon_social) {
-                $pdf->text(30, $start_y, 'Razon Social: ' . substr($razon_social, 0, 32), 8, false);
+            if (!empty($company['trade_name']) && !empty($razon_social) && $company['trade_name'] !== $razon_social && empty($logo_url)) {
+                $pdf->text(30, $start_y, 'Razon Social: ' . substr($razon_social, 0, 28), 8, false);
                 $start_y += 10;
             }
 
-            $pdf->text(30, $start_y, 'CUIT: ' . $cuit_emisor, 9, false);
-            $pdf->text(30, $start_y + 10, 'Condicion IVA: ' . ucfirst($cond_emisor), 9, false);
-            $pdf->text(30, $start_y + 20, 'Ingresos Brutos: ' . $iibb_emisor, 9, false);
-            $pdf->text(30, $start_y + 30, 'Inicio Act.: ' . $fch_inicio, 9, false);
+            $pdf->text(30, $start_y, 'CUIT: ' . $cuit_emisor, 8, false);
+            $pdf->text(30, $start_y + 10, 'Cond. IVA: ' . ucfirst($cond_emisor), 8, false);
+            $pdf->text(30, $start_y + 20, 'IIBB: ' . $iibb_emisor, 8, false);
+            $pdf->text(30, $start_y + 30, 'Inicio Act.: ' . $fch_inicio, 8, false);
 
             $dir_emisor = trim(($company['address'] ?? '') . ' ' . ($company['province'] ?? ''));
             if ($dir_emisor) {
-                $pdf->text(30, $start_y + 40, 'Domicilio: ' . substr($dir_emisor, 0, 36), 8, false);
+                $pdf->text(30, $start_y + 40, 'Dom: ' . substr($dir_emisor, 0, 32), 7, false);
             }
 
             // Encabezado Comprobante (Derecha)
-            $pdf->text(340, 36, $label, 13, true);
-            $pdf->text(340, 50, sprintf('Punto de Venta: %04d   Comp. Nro: %08d', $pto_vta, $cbte_nro), 10, true);
+            $pdf->text(390, 38, $label, 12, true);
+            $pdf->text(390, 52, sprintf('Pto. Vta: %04d   Comp: %08d', $pto_vta, $cbte_nro), 8, true);
             $fch_fmt = date('d/m/Y', strtotime($cbte_fch));
-            $pdf->text(340, 63, 'Fecha de Emision: ' . $fch_fmt, 9, false);
+            $pdf->text(390, 64, 'Fecha de Emision: ' . $fch_fmt, 8, false);
 
             // Línea separadora
-            $pdf->line(20, 96, 575, 96);
+            $pdf->line(20, 95, 575, 95);
 
             // Datos del Cliente Receptor
             $cliente_nom = substr($order->get_formatted_billing_full_name(), 0, 35);
@@ -249,13 +254,50 @@ class PdfHandler {
 
             $y = 186;
             foreach ($order->get_items() as $item) {
-                if ($y > 700) break;
+                if ($y > 670) break;
                 $pdf->text(30, $y, substr($item->get_name(), 0, 48), 9, false);
                 $pdf->text(365, $y, (string)$item->get_quantity(), 9, false);
                 $pdf->text(420, $y, '$' . number_format($order->get_item_subtotal($item), 2, ',', '.'), 9, false);
                 $pdf->text(500, $y, '$' . number_format($item->get_total(), 2, ',', '.'), 9, false);
                 $pdf->line(20, $y + 5, 575, $y + 5, 0.5);
-                $y += 20;
+                $y += 18;
+            }
+
+            // Descuentos (Cupones)
+            $discount_total = (float) $order->get_total_discount();
+            if ($discount_total > 0 && $y <= 680) {
+                $coupon_codes = implode(', ', $order->get_coupon_codes());
+                $desc_label = 'Descuento' . ($coupon_codes ? " ({$coupon_codes})" : '');
+                $pdf->text(30, $y, substr($desc_label, 0, 48), 9, false);
+                $pdf->text(365, $y, '1', 9, false);
+                $pdf->text(420, $y, '-$' . number_format($discount_total, 2, ',', '.'), 9, false);
+                $pdf->text(500, $y, '-$' . number_format($discount_total, 2, ',', '.'), 9, false);
+                $pdf->line(20, $y + 5, 575, $y + 5, 0.5);
+                $y += 18;
+            }
+
+            // Recargos / Tasas / Gastos (Fees)
+            foreach ($order->get_fees() as $fee) {
+                if ($y > 690) break;
+                $fee_total = (float) $fee->get_total();
+                $pdf->text(30, $y, substr($fee->get_name(), 0, 48), 9, false);
+                $pdf->text(365, $y, '1', 9, false);
+                $pdf->text(420, $y, '$' . number_format($fee_total, 2, ',', '.'), 9, false);
+                $pdf->text(500, $y, '$' . number_format($fee_total, 2, ',', '.'), 9, false);
+                $pdf->line(20, $y + 5, 575, $y + 5, 0.5);
+                $y += 18;
+            }
+
+            // Costo de Envío (si aplica)
+            $shipping_total = (float) $order->get_shipping_total();
+            if ($shipping_total > 0 && $y <= 700) {
+                $ship_name = $order->get_shipping_method() ?: 'Envio a domicilio';
+                $pdf->text(30, $y, substr($ship_name, 0, 48), 9, false);
+                $pdf->text(365, $y, '1', 9, false);
+                $pdf->text(420, $y, '$' . number_format($shipping_total, 2, ',', '.'), 9, false);
+                $pdf->text(500, $y, '$' . number_format($shipping_total, 2, ',', '.'), 9, false);
+                $pdf->line(20, $y + 5, 575, $y + 5, 0.5);
+                $y += 18;
             }
 
             // Totales

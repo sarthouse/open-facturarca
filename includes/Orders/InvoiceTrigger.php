@@ -75,14 +75,18 @@ class InvoiceTrigger {
             $cbte_tipo = TaxResolver::resolve_cbte_tipo($issuer_condition, $receiver_condition, 'invoice');
 
             $total = (float) $order->get_total();
-            $neto  = (float) $order->get_subtotal();
+            $iva_total = (float) $order->get_total_tax();
 
             $iva_array = [];
-            if ($cbte_tipo !== TaxResolver::CBTE_FACTURA_C) {
-                $iva_total = (float) $order->get_total_tax();
+            if ($cbte_tipo === TaxResolver::CBTE_FACTURA_C) {
+                // Monotributo no discrimina IVA; el total facturado es el total final
+                $neto = $total;
+            } else {
+                // Responsable Inscripto (Facturas A y B)
                 if ($iva_total > 0) {
+                    $neto = round($total - $iva_total, 2);
                     $iva_array[] = [
-                        'Id'      => 5,
+                        'Id'      => 5, // 21% estándar
                         'BaseImp' => round($neto, 2),
                         'Importe' => round($iva_total, 2),
                     ];

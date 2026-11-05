@@ -70,12 +70,12 @@ class PackingSlipHandler {
 
         $company_id  = $order->get_meta('_arca_company_id');
         $company     = $company_id ? \WcArca\Services\CompanyManager::get_company($company_id) : \WcArca\Services\CompanyManager::get_default_company();
-        $emisor_name = $order->get_meta('_arca_company_name') ?: ($company['name'] ?? get_bloginfo('name'));
-        $emisor_cuit = $order->get_meta('_arca_company_cuit') ?: ($company['cuit'] ?? '');
+        $emisor_name = !empty($company['trade_name']) ? $company['trade_name'] : ($company['name'] ?? get_bloginfo('name'));
+        $razon_social = $company['name'] ?? '';
+        $emisor_cuit = $company['cuit'] ?? '';
 
         $order_id = $order->get_id();
         $date     = $order->get_date_created() ? $order->get_date_created()->date('d/m/Y') : date('d/m/Y');
-        $shipping = strip_tags($order->get_formatted_shipping_address() ?: $order->get_formatted_billing_address());
         $pto_vta  = sprintf('%04d', (int) ($order->get_meta('_arca_pto_vta') ?: ($company['pto_vta'] ?? 1)));
         $cbte_nro = sprintf('%08d', $order_id);
 
@@ -84,51 +84,100 @@ class PackingSlipHandler {
         foreach ($copies as $copy_name) {
             $pdf->add_page();
 
-            // Marco
+            // Marco exterior
             $pdf->rect(20, 20, 555, 800);
 
-            // Letra X Badge
-            $pdf->rect(275, 20, 45, 45, true, true, [245, 245, 245], [0, 0, 0]);
-            $pdf->text(290, 50, 'X', 22, true);
-            $pdf->text(280, 60, 'COD. 99', 8, true);
+            // Letra X Badge (Central)
+            $pdf->rect(275, 20, 45, 40, true, true, [245, 245, 245], [0, 0, 0]);
+            $pdf->text(291, 46, 'X', 20, true);
+            $pdf->text(280, 56, 'COD. 99', 8, true);
 
-            // Copia
+            // Leyenda obligatoria: exclusivamente debajo del recuadro central de la letra
+            $pdf->rect(215, 62, 165, 26, true, true, [240, 240, 240], [0, 0, 0]);
+            $pdf->text(225, 73, 'DOCUMENTO NO VALIDO', 8, true);
+            $pdf->text(236, 84, 'COMO FACTURA', 8, true);
+
+            // Indicador de Copia
             $pdf->text(515, 30, $copy_name, 8, true);
 
-            // Emisor
-            $pdf->text(30, 40, substr($emisor_name, 0, 35), 14, true);
-            if ($emisor_cuit) {
-                $pdf->text(30, 55, 'CUIT: ' . $emisor_cuit, 10, false);
+            // Datos Emisor (Izquierda)
+            $logo_url = $company['logo_url'] ?? '';
+            $y_emisor = 34;
+
+            if (!empty($logo_url)) {
+                $has_logo = $pdf->image($logo_url, 30, 26, 120, 38);
+                if ($has_logo) {
+                    $y_emisor = 68;
+                } else {
+                    $pdf->text(30, $y_emisor, substr($emisor_name, 0, 26), 12, true);
+                    $y_emisor += 13;
+                }
+            } else {
+                $pdf->text(30, $y_emisor, substr($emisor_name, 0, 26), 12, true);
+                $y_emisor += 13;
             }
 
-            // Remito
-            $pdf->text(340, 40, 'REMITO DE ENTREGA', 13, true);
-            $pdf->text(340, 53, sprintf('Punto de Venta: %s   Comp. Nro: %s', $pto_vta, $cbte_nro), 9, true);
-            $pdf->text(340, 65, 'Fecha de Emision: ' . $date, 9, false);
+            if (!empty($company['trade_name']) && !empty($razon_social) && $company['trade_name'] !== $razon_social && empty($logo_url)) {
+                $pdf->text(30, $y_emisor, 'Razon Social: ' . substr($razon_social, 0, 28), 8, false);
+                $y_emisor += 10;
+            }
+            if ($emisor_cuit) {
+                $pdf->text(30, $y_emisor, 'CUIT: ' . $emisor_cuit, 8, false);
+                $y_emisor += 10;
+            }
+            $dir_emisor = trim(($company['address'] ?? '') . ' ' . ($company['province'] ?? ''));
+            if ($dir_emisor) {
+                $pdf->text(30, $y_emisor, 'Dom: ' . substr($dir_emisor, 0, 32), 7, false);
+                $y_emisor += 9;
+            }
+            if (!empty($company['phone'])) {
+                $pdf->text(30, $y_emisor, 'Tel: ' . substr($company['phone'], 0, 22), 7, false);
+            }
 
-            // Banner No Válido
-            $pdf->rect(20, 85, 555, 16, true, true, [235, 235, 235], [0, 0, 0]);
-            $pdf->text(180, 96, 'DOCUMENTO NO VALIDO COMO FACTURA', 9, true);
+            // Datos Comprobante (Derecha)
+            $pdf->text(390, 38, 'REMITO DE ENTREGA', 12, true);
+            $pdf->text(390, 52, sprintf('Pto. Vta: %s   Comp: %s', $pto_vta, $cbte_nro), 8, true);
+            $pdf->text(390, 64, 'Fecha de Emision: ' . $date, 8, false);
 
-            // Datos Envío
+            // Línea separadora encabezado
+            $pdf->line(20, 95, 575, 95);
+
+            // Datos Destinatario y Envío
             $destinatario = substr($order->get_formatted_shipping_full_name() ?: $order->get_formatted_billing_full_name(), 0, 35);
-            $telefono = $order->get_billing_phone() ?: '-';
+            $telefono     = $order->get_billing_phone() ?: '-';
 
-            $pdf->text(30, 110, 'Destinatario: ' . $destinatario, 10, true);
-            $pdf->text(30, 125, 'Telefono: ' . $telefono, 10, false);
-            $pdf->text(30, 140, 'Direccion: ' . substr($shipping, 0, 45), 9, false);
+            // Domicilio limpio sin nombre
+            $shipping_addr1 = $order->get_shipping_address_1() ?: $order->get_billing_address_1();
+            $shipping_addr2 = $order->get_shipping_address_2() ?: $order->get_billing_address_2();
+            $dir_dest       = trim($shipping_addr1 . ' ' . $shipping_addr2);
 
-            $pdf->text(340, 110, 'Pedido WooCommerce: #' . $order_id, 10, true);
-            $pdf->text(340, 125, 'Envio: ' . substr($order->get_shipping_method() ?: 'Estandar', 0, 30), 10, false);
+            $city_dest      = $order->get_shipping_city() ?: $order->get_billing_city();
+            $state_dest     = $order->get_shipping_state() ?: $order->get_billing_state();
+            $postcode_dest  = $order->get_shipping_postcode() ?: $order->get_billing_postcode();
 
-            // Tabla
-            $pdf->rect(20, 160, 555, 20, false, true);
-            $pdf->text(30, 174, 'Item', 9, true);
-            $pdf->text(60, 174, 'Descripcion', 9, true);
-            $pdf->text(400, 174, 'SKU', 9, true);
-            $pdf->text(500, 174, 'Cantidad', 9, true);
+            $loc_parts_dest = array_filter([$city_dest, $state_dest, $postcode_dest ? "CP $postcode_dest" : '']);
+            $loc_str_dest   = implode(', ', $loc_parts_dest);
 
-            $y = 195;
+            $pdf->text(30, 108, 'Destinatario: ' . $destinatario, 9, true);
+            $pdf->text(30, 120, 'Telefono: ' . $telefono, 8, false);
+            if ($dir_dest || $loc_str_dest) {
+                $pdf->text(30, 131, 'Direccion: ' . substr(trim($dir_dest . ' - ' . $loc_str_dest), 0, 55), 8, false);
+            }
+
+            $pdf->text(340, 108, 'Pedido WooCommerce: #' . $order_id, 9, true);
+            $shipping_method = $order->get_shipping_method() ?: 'Estandar';
+            $pdf->text(340, 120, 'Metodo de Envio:', 8, true);
+            $pdf->text(340, 131, substr($shipping_method, 0, 48), 8, false);
+
+            // Encabezado Tabla
+            $pdf->line(20, 154, 575, 154);
+            $pdf->rect(20, 154, 555, 18, false, true);
+            $pdf->text(30, 166, 'Item', 9, true);
+            $pdf->text(60, 166, 'Descripcion', 9, true);
+            $pdf->text(400, 166, 'SKU', 9, true);
+            $pdf->text(500, 166, 'Cantidad', 9, true);
+
+            $y = 186;
             $i = 1;
             foreach ($order->get_items() as $item) {
                 if ($y > 700) break;
