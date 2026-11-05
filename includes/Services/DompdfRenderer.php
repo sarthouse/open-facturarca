@@ -10,7 +10,11 @@ class DompdfRenderer {
     /**
      * Carga el autoloader de Dompdf empaquetado en el plugin
      */
-    public static function load() {
+    public static function load(): bool {
+        if (class_exists('Dompdf\Dompdf')) {
+            return true;
+        }
+
         $autoload = OPEN_FACTURARCA_DIR . 'includes/Libraries/dompdf/autoload.inc.php';
         if (file_exists($autoload)) {
             require_once $autoload;
@@ -27,39 +31,52 @@ class DompdfRenderer {
     }
 
     /**
-     * Devuelve el estilo base compartido y robusto para todos los comprobantes Dompdf
+     * Devuelve el estilo base adaptado a las limitaciones de Dompdf
      */
-    public static function get_base_css() {
+    public static function get_base_css(): string {
         return '
         @page {
-            size: 210mm 297mm;
-            margin: 10mm 12mm;
+            size: a4 portrait;
+            margin: 0;
         }
         * {
             box-sizing: border-box;
             font-family: Helvetica, Arial, sans-serif;
         }
-        body {
+        html {
             margin: 0;
+            padding: 0
+        }
+        body {
+            margin: 10mm 12mm;
             padding: 0;
             color: #111;
-            font-size: 11px;
-            line-height: 1.35;
+            font-size: 10px;
+            line-height: 1.3;
             background: #fff;
         }
         .voucher-page {
-            width: 100%;
-            height: 270mm;
-            page-break-after: always;
+            position: relative;
         }
-        .voucher-page:last-child {
-            page-break-after: avoid;
+        .voucher-page + .voucher-page {
+            page-break-before: always;
         }
-        .border-box-table {
-            width: 100%;
-            height: 100%;
+        .border-box {
             border: 1.5px solid #000;
-            border-collapse: collapse;
+            position: relative;
+            background: #fff;
+            height: 250mm
+        }
+        .header-copy-bar {
+            width: 100%;
+            border-bottom: 1.5px solid #000;
+            text-align: center;
+            font-size: 11px;
+            font-weight: bold;
+            padding: 4px 0;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            background: #fff;
         }
         .header-table {
             width: 100%;
@@ -67,54 +84,57 @@ class DompdfRenderer {
             border-bottom: 1.5px solid #000;
         }
         .header-col-left {
-            width: 45%;
+            width: 50%;
             vertical-align: top;
-            padding: 10px 12px;
-            border-right: 1px solid #000;
-        }
-        .header-col-center {
-            width: 10%;
-            vertical-align: top;
-            text-align: center;
-            padding: 0;
-            background-color: #f8f8f8;
+            padding: 8px 24px 8px 12px;
             border-right: 1px solid #000;
         }
         .header-col-right {
-            width: 45%;
+            width: 50%;
             vertical-align: top;
-            padding: 10px 12px;
+            padding: 8px 12px 8px 24px;
+        }
+        .header-badge-box {
+            position: absolute;
+            top: 23px;
+            left: 50%;
+            margin-left: -19px;
+            width: 38px;
+            border: 1.5px solid #000;
+            background: #fff;
+            text-align: center;
+            z-index: 99;
+        }
+        .footer-pinned {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            width: 100%;
         }
         .letter-badge {
-            font-size: 26px;
+            font-size: 24px;
             font-weight: bold;
-            line-height: 30px;
+            line-height: 26px;
             display: block;
-            padding-top: 4px;
+            padding-top: 1px;
         }
         .letter-code {
-            font-size: 8px;
+            font-size: 7.5px;
             font-weight: bold;
             display: block;
             border-top: 1px solid #000;
-            padding: 2px 0;
+            padding: 1px 0;
             background: #fff;
         }
         .non-fiscal-warning {
-            font-size: 6.5px;
+            font-size: 6px;
             font-weight: bold;
             text-transform: uppercase;
             border-top: 1px solid #000;
-            padding: 3px 1px;
-            background: #eee;
-            line-height: 1.1;
-        }
-        .copy-type {
-            float: right;
-            font-size: 9px;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            padding: 1px;
+            background: #f0f0f0;
+            line-height: 1;
         }
         .logo {
             max-height: 38px;
@@ -123,19 +143,19 @@ class DompdfRenderer {
             margin-bottom: 4px;
         }
         .brand-title {
-            font-size: 15px;
-            font-weight: bold;
-            margin-bottom: 3px;
-        }
-        .voucher-title {
-            font-size: 14px;
+            font-size: 13.5px;
             font-weight: bold;
             margin-bottom: 4px;
-            letter-spacing: 0.3px;
+        }
+        .voucher-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 6px;
+            letter-spacing: 0.5px;
         }
         .meta-line {
             margin: 2px 0;
-            font-size: 10px;
+            font-size: 9.5px;
         }
         .meta-line strong {
             font-weight: bold;
@@ -149,7 +169,7 @@ class DompdfRenderer {
         .client-col {
             width: 50%;
             vertical-align: top;
-            padding: 8px 12px;
+            padding: 6px 10px;
         }
         .items-table {
             width: 100%;
@@ -158,32 +178,26 @@ class DompdfRenderer {
         .items-table th {
             background-color: #f0f0f0;
             border-bottom: 1.5px solid #000;
-            padding: 6px 10px;
-            font-size: 9.5px;
+            padding: 5px 8px;
+            font-size: 9px;
             text-transform: uppercase;
             font-weight: bold;
             text-align: left;
         }
         .items-table td {
-            padding: 7px 10px;
+            padding: 6px 8px;
             border-bottom: 1px solid #e5e5e5;
-            font-size: 10px;
+            font-size: 9.5px;
             vertical-align: middle;
         }
         .text-center { text-align: center; }
         .text-right { text-align: right; }
         .section-notes {
-            padding: 8px 12px;
+            padding: 6px 10px;
             border-top: 1px solid #ccc;
-            font-size: 9.5px;
+            font-size: 9px;
             color: #333;
             background: #fff;
-        }
-        .content-row {
-            height: 100%;
-        }
-        .footer-row {
-            height: 1px;
         }
         .signatures-table {
             width: 100%;
@@ -202,7 +216,7 @@ class DompdfRenderer {
             margin-bottom: 4px;
         }
         .signature-label {
-            font-size: 9.5px;
+            font-size: 9px;
             font-weight: bold;
         }
         .signature-sub {
@@ -217,8 +231,8 @@ class DompdfRenderer {
         .totals-col-left {
             width: 55%;
             vertical-align: top;
-            padding: 8px 12px;
-            font-size: 9px;
+            padding: 6px 10px;
+            font-size: 8.5px;
             color: #444;
             border-right: 1px solid #ddd;
         }
@@ -232,18 +246,18 @@ class DompdfRenderer {
             border-collapse: collapse;
         }
         .subtotals-table td {
-            padding: 4px 10px;
-            font-size: 10px;
+            padding: 4px 8px;
+            font-size: 9.5px;
         }
         .total-highlight {
             background-color: #f0f0f0;
             border-top: 1.5px solid #000;
-            font-size: 11.5px !important;
+            font-size: 11px !important;
             font-weight: bold;
         }
         .arca-footer {
             border-top: 1.5px solid #000;
-            padding: 8px 12px;
+            padding: 6px 10px;
             background: #fafafa;
         }
         .arca-footer table {
@@ -262,15 +276,15 @@ class DompdfRenderer {
         .arca-data-cell {
             vertical-align: middle;
             padding-left: 10px;
-            font-size: 10.5px;
+            font-size: 10px;
         }
         ';
     }
 
     /**
-     * Convierte un string HTML con estilos CSS en un archivo binario PDF
+     * Convierte HTML en binario PDF
      */
-    public static function render_html_to_pdf($html, $paper = 'a4', $orientation = 'portrait') {
+    public static function render_html_to_pdf(string $html, string $paper = 'a4', string $orientation = 'portrait'): string {
         if (!self::load()) {
             throw new \Exception(__('La librería Dompdf no se encuentra en includes/Libraries/dompdf.', 'open-facturarca'));
         }
@@ -280,9 +294,10 @@ class DompdfRenderer {
         $options->set('isHtml5ParserEnabled', true);
         $options->set('defaultFont', 'Helvetica');
         $options->set('dpi', 96);
+        $options->set('chroot', OPEN_FACTURARCA_DIR);
 
         $css = self::get_base_css();
-        $full_document = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>' . $css . '</style></head><body>' . $html . '</body></html>';
+        $full_document = '<!DOCTYPE html><html><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"/><style>' . $css . '</style></head><body>' . $html . '</body></html>';
 
         $dompdf = new Dompdf($options);
         $dompdf->loadHtml($full_document, 'UTF-8');
