@@ -33,6 +33,8 @@ $cliente_nombre = $order->get_formatted_billing_full_name() ?: $order->get_forma
 $telefono       = $order->get_billing_phone() ?: '-';
 $email          = $order->get_billing_email() ?: '-';
 $logo_url       = $company['logo_url'] ?? '';
+$shipping_total = (float) $order->get_shipping_total();
+$shipping_tax   = (float) $order->get_shipping_tax();
 ?>
 <div class="voucher-page">
     <div class="border-box">
@@ -126,7 +128,14 @@ $logo_url       = $company['logo_url'] ?? '';
                     $alicuota   = $line_total > 0 ? round(($line_tax / $line_total) * 100, 1) : 21.0;
                 ?>
                 <tr>
-                    <td><strong><?php echo esc_html($item->get_name()); ?></strong></td>
+                    <td>
+                        <strong><?php echo esc_html($item->get_name()); ?></strong>
+                        <?php 
+                        $item_meta = wc_display_item_meta($item, ['echo' => false]);
+                        if (!empty($item_meta)): ?>
+                            <div class="item-meta-list"><?php echo $item_meta; ?></div>
+                        <?php endif; ?>
+                    </td>
                     <td class="text-center"><?php echo number_format($qty, 2, ',', '.'); ?></td>
                     <td class="text-right">$<?php echo number_format($unit_neto, 2, ',', '.'); ?></td>
                     <td class="text-center"><?php echo number_format($alicuota, 1, ',', '.'); ?>%</td>
@@ -134,6 +143,34 @@ $logo_url       = $company['logo_url'] ?? '';
                     <td class="text-right">$<?php echo number_format($line_total + $line_tax, 2, ',', '.'); ?></td>
                 </tr>
                 <?php endforeach; ?>
+
+                <?php foreach ($order->get_fees() as $fee): 
+                    $fee_total = (float) $fee->get_total();
+                    $fee_tax   = (float) $fee->get_total_tax();
+                    $fee_alicuota = $fee_total > 0 ? round(($fee_tax / $fee_total) * 100, 1) : 21.0;
+                ?>
+                <tr>
+                    <td><strong><?php echo esc_html($fee->get_name()); ?></strong></td>
+                    <td class="text-center">1,00</td>
+                    <td class="text-right">$<?php echo number_format($fee_total, 2, ',', '.'); ?></td>
+                    <td class="text-center"><?php echo number_format($fee_alicuota, 1, ',', '.'); ?>%</td>
+                    <td class="text-right">$<?php echo number_format($fee_tax, 2, ',', '.'); ?></td>
+                    <td class="text-right">$<?php echo number_format($fee_total + $fee_tax, 2, ',', '.'); ?></td>
+                </tr>
+                <?php endforeach; ?>
+
+                <?php if ($shipping_total > 0): 
+                    $ship_alicuota = $shipping_total > 0 ? round(($shipping_tax / $shipping_total) * 100, 1) : 21.0;
+                ?>
+                <tr>
+                    <td><strong>Envío (<?php echo esc_html($order->get_shipping_method() ?: 'Logística'); ?>)</strong></td>
+                    <td class="text-center">1,00</td>
+                    <td class="text-right">$<?php echo number_format($shipping_total, 2, ',', '.'); ?></td>
+                    <td class="text-center"><?php echo number_format($ship_alicuota, 1, ',', '.'); ?>%</td>
+                    <td class="text-right">$<?php echo number_format($shipping_tax, 2, ',', '.'); ?></td>
+                    <td class="text-right">$<?php echo number_format($shipping_total + $shipping_tax, 2, ',', '.'); ?></td>
+                </tr>
+                <?php endif; ?>
             </tbody>
         </table>
         <div class="footer-pinned">

@@ -397,6 +397,7 @@ class PdfHandler {
             'order'            => $order,
             'company'          => $company,
             'nc'               => $nc,
+            'reason'           => !empty($nc['reason']) ? $nc['reason'] : 'Nota de Crédito por Anulación / Ajuste de Operación',
             'pto_vta'          => $pto_vta,
             'cbte_nro'         => $cbte_nro,
             'cbte_tipo'        => $cbte_tipo,

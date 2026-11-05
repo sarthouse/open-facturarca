@@ -190,6 +190,24 @@ class DompdfRenderer {
             font-size: 9.5px;
             vertical-align: middle;
         }
+        .item-meta-list {
+            font-size: 8px;
+            color: #555;
+            margin-top: 2px;
+            line-height: 1.25;
+        }
+        .item-meta-list .wc-item-meta {
+            padding-left: 0;
+            list-style: none;
+            margin: 0;
+        }
+        .item-meta-list li {
+            margin: 1px 0;
+        }
+        .item-meta-list p {
+            margin: 0;
+            display: inline;
+        }
         .text-center { text-align: center; }
         .text-right { text-align: right; }
         .section-notes {
@@ -199,17 +217,39 @@ class DompdfRenderer {
             color: #333;
             background: #fff;
         }
+        .remito-summary-bar {
+            width: 100%;
+            border-top: 1.5px solid #000;
+            border-collapse: collapse;
+            background: #fdfdfd;
+        }
+        .remito-summary-bar td {
+            padding: 6px 12px;
+            font-size: 9.5px;
+        }
         .signatures-table {
             width: 100%;
             border-collapse: collapse;
             border-top: 1.5px solid #000;
             background-color: #fafafa;
         }
-        .signature-cell {
-            width: 50%;
-            padding: 30px 25px 12px 25px;
+        .signature-cell-left {
+            width: 45%;
+            padding: 20px 20px 10px 20px;
             text-align: center;
             vertical-align: bottom;
+            border-right: 1px solid #ddd;
+        }
+        .signature-cell-right {
+            width: 55%;
+            padding: 8px 15px 8px 15px;
+            vertical-align: top;
+            font-size: 9px;
+        }
+        .reception-field-line {
+            border-bottom: 1px dotted #888;
+            margin-bottom: 6px;
+            padding-bottom: 2px;
         }
         .signature-line {
             border-top: 1px solid #000;

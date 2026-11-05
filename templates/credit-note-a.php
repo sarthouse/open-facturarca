@@ -105,7 +105,7 @@ $iva_total = $amount - $neto;
             <tbody>
                 <tr>
                     <td>
-                        <strong>Nota de Crédito por Anulación / Ajuste</strong><br>
+                        <strong><?php echo esc_html($reason); ?></strong><br>
                         <span style="font-size: 8.5px; color: #555;">Comprobante asociado <?php echo esc_html($asoc_tipo_label); ?> N° <?php echo esc_html("{$asoc_pto_vta}-{$asoc_cbte_nro}"); ?></span>
                     </td>
                     <td class="text-center">1</td>

@@ -130,6 +130,10 @@ class OrderMetabox {
                         <label style="font-size: 12px; display:block;">Monto a acreditar ($):</label>
                         <input type="number" step="0.01" max="<?php echo esc_attr($order->get_total()); ?>" name="nc_amount" value="<?php echo esc_attr($order->get_total()); ?>" style="width: 100%;">
                     </p>
+                    <p style="margin-bottom: 8px;">
+                        <label style="font-size: 12px; display:block;">Motivo / Concepto (Opcional):</label>
+                        <input type="text" name="nc_reason" placeholder="Ej: Devolución de producto, Talle, Bonificación" style="width: 100%;">
+                    </p>
                     <button type="submit" class="button" style="width: 100%; border-color: #c62828; color: #c62828;" onclick="return confirm('¿Confirmas la emisión de esta Nota de Crédito en ARCA? Esta acción es irreversible ante el fisco.');">
                         Emitir Nota de Crédito
                     </button>
@@ -207,12 +211,13 @@ class OrderMetabox {
 
         $order_id = isset($_POST['order_id']) ? absint($_POST['order_id']) : 0;
         $amount   = isset($_POST['nc_amount']) ? (float)$_POST['nc_amount'] : 0;
+        $reason   = isset($_POST['nc_reason']) ? sanitize_text_field($_POST['nc_reason']) : '';
 
         if (!$order_id || $amount <= 0) {
             wp_die(__('Parámetros inválidos para la Nota de Crédito.', 'wc-factura-arca'));
         }
 
-        $result = InvoiceTrigger::process_credit_note($order_id, $amount);
+        $result = InvoiceTrigger::process_credit_note($order_id, $amount, 0, $reason);
         self::redirect_back($order_id, $result);
     }
 

@@ -108,14 +108,23 @@ $shipping_method = $order->get_shipping_method() ?: 'Coordinar entrega';
             <tbody>
                 <?php 
                 $num = 1;
+                $total_unidades = 0;
                 foreach ($order->get_items() as $item): 
                     $product = $item->get_product();
                     $sku = $product ? $product->get_sku() : '-';
                     $qty = (float) $item->get_quantity();
+                    $total_unidades += $qty;
                 ?>
                 <tr>
                     <td class="text-center"><?php echo sprintf('%02d', $num++); ?></td>
-                    <td><strong><?php echo esc_html($item->get_name()); ?></strong></td>
+                    <td>
+                        <strong><?php echo esc_html($item->get_name()); ?></strong>
+                        <?php 
+                        $item_meta = wc_display_item_meta($item, ['echo' => false]);
+                        if (!empty($item_meta)): ?>
+                            <div class="item-meta-list"><?php echo $item_meta; ?></div>
+                        <?php endif; ?>
+                    </td>
                     <td><?php echo esc_html($sku ?: '-'); ?></td>
                     <td class="text-center"><strong><?php echo number_format($qty, 2, ',', '.') . ' un.'; ?></strong></td>
                 </tr>
@@ -123,6 +132,18 @@ $shipping_method = $order->get_shipping_method() ?: 'Coordinar entrega';
             </tbody>
         </table>
         <div class="footer-pinned">
+
+            <!-- RESUMEN DE BULTOS / UNIDADES TOTALES -->
+            <table class="remito-summary-bar">
+                <tr>
+                    <td style="width: 60%; font-weight: bold; color: #333;">
+                        Total de Ítems: <?php echo esc_html($num - 1); ?>
+                    </td>
+                    <td style="width: 40%; text-align: right; font-weight: bold; font-size: 10.5px;">
+                        Total de Unidades / Bultos: <?php echo number_format($total_unidades, 2, ',', '.') . ' un.'; ?>
+                    </td>
+                </tr>
+            </table>
 
             <?php if ($order->get_customer_note()): ?>
             <div class="section-notes">
@@ -133,15 +154,19 @@ $shipping_method = $order->get_shipping_method() ?: 'Coordinar entrega';
             <!-- FIRMAS DE RECEPCIÓN Y CONFORMIDAD -->
             <table class="signatures-table">
                 <tr>
-                    <td class="signature-cell">
+                    <td class="signature-cell-left">
                         <div class="signature-line"></div>
                         <div class="signature-label">Despachado / Embalado por</div>
                         <div class="signature-sub">Control de mercadería en origen</div>
                     </td>
-                    <td class="signature-cell">
-                        <div class="signature-line"></div>
-                        <div class="signature-label">Recibí Conforme</div>
-                        <div class="signature-sub">Firma, Aclaración y DNI de recepción</div>
+                    <td class="signature-cell-right">
+                        <div style="font-weight: bold; margin-bottom: 6px; font-size: 9.5px; text-transform: uppercase;">
+                            Recibí Conforme
+                        </div>
+                        <div class="reception-field-line"><strong>Firma:</strong></div>
+                        <div class="reception-field-line"><strong>Aclaración:</strong></div>
+                        <div class="reception-field-line"><strong>DNI:</strong></div>
+                        <div class="reception-field-line" style="margin-bottom: 0;"><strong>Fecha de recepción:</strong> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/ 20____</div>
                     </td>
                 </tr>
             </table>

@@ -102,12 +102,21 @@ class InvoiceTrigger {
                 $neto = $total;
             } else {
                 // Responsable Inscripto (Facturas A y B)
+                // En ARCA WSFE, tanto Factura A como Factura B exigen informar ImpNeto e ImpIVA en el payload
                 if ($iva_total > 0) {
                     $neto = round($total - $iva_total, 2);
+                    $iva_calc = round($iva_total, 2);
+                } else {
+                    // Si WooCommerce no tiene habilitado el desglose de impuestos, calculamos la alícuota estándar 21%
+                    $neto = round($total / 1.21, 2);
+                    $iva_calc = round($total - $neto, 2);
+                }
+
+                if ($iva_calc > 0) {
                     $iva_array[] = [
-                        'Id'      => 5, // 21% estándar
+                        'Id'      => 5, // 21% estándar en tabla alícuotas AFIP
                         'BaseImp' => round($neto, 2),
-                        'Importe' => round($iva_total, 2),
+                        'Importe' => round($iva_calc, 2),
                     ];
                 } else {
                     $neto = $total;
@@ -157,7 +166,7 @@ class InvoiceTrigger {
         }
     }
 
-    public static function process_credit_note($order_id, $amount, $refund_id = null) {
+    public static function process_credit_note($order_id, $amount, $refund_id = null, $reason = '') {
         $order = wc_get_order($order_id);
         if (!$order) {
             return ['success' => false, 'message' => 'Pedido no encontrado.'];
@@ -204,9 +213,17 @@ class InvoiceTrigger {
             $iva_array = [];
 
             if ($cbte_tipo !== TaxResolver::CBTE_NOTA_CREDITO_C) {
-                $ratio = ($total_factura > 0) ? ($amount / $total_factura) : 1;
-                $neto  = round(((float)$order->get_subtotal()) * $ratio, 2);
-                $iva   = round($amount - $neto, 2);
+                // Responsable Inscripto (Nota de Crédito A y B)
+                $iva_order = (float)$order->get_total_tax();
+                if ($iva_order > 0 && $total_factura > 0) {
+                    $ratio = $amount / $total_factura;
+                    $neto  = round(((float)$order->get_subtotal()) * $ratio, 2);
+                    $iva   = round($amount - $neto, 2);
+                } else {
+                    // Si WC no tiene impuestos habilitados, desglosamos 21%
+                    $neto = round($amount / 1.21, 2);
+                    $iva  = round($amount - $neto, 2);
+                }
 
                 if ($iva > 0) {
                     $iva_array[] = [
@@ -232,6 +249,7 @@ class InvoiceTrigger {
                 'cbte_fch'  => $result['cbte_fch'],
                 'importe'   => $amount,
                 'refund_id' => $refund_id,
+                'reason'    => $reason,
             ];
             $existing_ncs[] = $nc_entry;
             $order->update_meta_data('_arca_credit_notes', $existing_ncs);

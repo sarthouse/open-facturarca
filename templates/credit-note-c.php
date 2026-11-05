@@ -130,7 +130,7 @@ $logo_url       = $company['logo_url'] ?? '';
             <tbody>
                 <tr>
                     <td>
-                        <strong>Nota de Crédito por Anulación / Ajuste de Operación</strong><br>
+                        <strong><?php echo esc_html($reason); ?></strong><br>
                         <span style="font-size: 8.5px; color: #555;">Correspondiente a comprobante original <?php echo esc_html($asoc_tipo_label); ?> N° <?php echo esc_html("{$asoc_pto_vta}-{$asoc_cbte_nro}"); ?></span>
                     </td>
                     <td class="text-center">1,00</td>

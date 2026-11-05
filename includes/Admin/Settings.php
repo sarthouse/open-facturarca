@@ -101,6 +101,15 @@ class Settings {
 
         add_submenu_page(
             'open-facturarca',
+            __('Comprobantes Emitidos', 'open-facturarca'),
+            __('Comprobantes', 'open-facturarca'),
+            'manage_woocommerce',
+            'open-facturarca-invoices',
+            [__CLASS__, 'render_standalone_page']
+        );
+
+        add_submenu_page(
+            'open-facturarca',
             __('Generador de Certificados', 'open-facturarca'),
             __('Certificados y CSR', 'open-facturarca'),
             'manage_woocommerce',
@@ -143,6 +152,7 @@ class Settings {
         $page = isset($_GET['page']) ? sanitize_text_field($_GET['page']) : 'open-facturarca';
         $section_map = [
             'open-facturarca'            => 'companies',
+            'open-facturarca-invoices'   => 'invoices',
             'open-facturarca-cert-tool'  => 'cert_tool',
             'open-facturarca-reports'    => 'reports',
             'open-facturarca-automation' => 'automation',
@@ -159,6 +169,9 @@ class Settings {
             <nav class="nav-tab-wrapper" style="margin-bottom: 20px;">
                 <a href="<?php echo esc_url(admin_url('admin.php?page=open-facturarca&section=companies')); ?>" class="nav-tab <?php echo $current_section === 'companies' ? 'nav-tab-active' : ''; ?>">
                     Empresas Emisoras
+                </a>
+                <a href="<?php echo esc_url(admin_url('admin.php?page=open-facturarca-invoices&section=invoices')); ?>" class="nav-tab <?php echo $current_section === 'invoices' ? 'nav-tab-active' : ''; ?>">
+                    Comprobantes Emitidos
                 </a>
                 <a href="<?php echo esc_url(admin_url('admin.php?page=open-facturarca-cert-tool&section=cert_tool')); ?>" class="nav-tab <?php echo $current_section === 'cert_tool' ? 'nav-tab-active' : ''; ?>">
                     Generador de Clave y CSR
@@ -177,6 +190,8 @@ class Settings {
             <?php
             if ($current_section === 'companies') {
                 self::render_companies_view();
+            } elseif ($current_section === 'invoices') {
+                InvoiceListHandler::render_view();
             } elseif ($current_section === 'cert_tool') {
                 self::render_cert_tool_view();
             } elseif ($current_section === 'reports') {
