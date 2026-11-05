@@ -23,18 +23,28 @@ class SimplePdf {
         }
     }
 
-    public function text($x, $y, $text, $size = 10, $bold = false) {
+    public function text($x, $y, $text, $size = 10, $bold = false, $color = [0, 0, 0]) {
         $font = $bold ? '/F2' : '/F1';
         $escaped = $this->escape_text($text);
         // En PDF el eje Y comienza desde abajo
         $pdf_y = $this->page_height - $y;
-        $this->current_page_content .= sprintf("BT %s %d Tf %.2f %.2f Td (%s) Tj ET\n", $font, $size, $x, $pdf_y, $escaped);
+        $r = $color[0] / 255;
+        $g = $color[1] / 255;
+        $b = $color[2] / 255;
+        $this->current_page_content .= sprintf("q %.3f %.3f %.3f rg BT %s %d Tf %.2f %.2f Td (%s) Tj ET Q\n", $r, $g, $b, $font, $size, $x, $pdf_y, $escaped);
     }
 
-    public function rect($x, $y, $w, $h, $fill = false, $stroke = true) {
+    public function rect($x, $y, $w, $h, $fill = false, $stroke = true, $fillColor = [240, 240, 240], $strokeColor = [0, 0, 0]) {
         $pdf_y = $this->page_height - $y - $h;
-        $op = ($fill && $stroke) ? 'B' : ($fill ? 'f' : 'S');
-        $this->current_page_content .= sprintf("%.2f %.2f %.2f %.2f re %s\n", $x, $pdf_y, $w, $h, $op);
+        $op = ($fill && $stroke) ? 'B' : ($fill ? 'f' : 's');
+        $r_fill = $fillColor[0] / 255;
+        $g_fill = $fillColor[1] / 255;
+        $b_fill = $fillColor[2] / 255;
+        $r_str = $strokeColor[0] / 255;
+        $g_str = $strokeColor[1] / 255;
+        $b_str = $strokeColor[2] / 255;
+        $this->current_page_content .= sprintf("q %.3f %.3f %.3f rg %.3f %.3f %.3f RG %.2f %.2f %.2f %.2f re %s Q\n", 
+            $r_fill, $g_fill, $b_fill, $r_str, $g_str, $b_str, $x, $pdf_y, $w, $h, $op);
     }
 
     public function line($x1, $y1, $x2, $y2, $width = 1) {

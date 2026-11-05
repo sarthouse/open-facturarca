@@ -152,7 +152,8 @@ class PdfHandler {
         $company_id    = $order->get_meta('_arca_company_id');
         $company       = $company_id ? \WcArca\Services\CompanyManager::get_company($company_id) : \WcArca\Services\CompanyManager::get_default_company();
         $cuit_emisor   = $order->get_meta('_arca_company_cuit') ?: ($company['cuit'] ?? '');
-        $nombre_emisor = $order->get_meta('_arca_company_name') ?: ($company['name'] ?? get_bloginfo('name'));
+        $razon_social  = $company['name'] ?? get_bloginfo('name');
+        $nombre_emisor = !empty($company['trade_name']) ? $company['trade_name'] : $razon_social;
         $cond_emisor   = $company['tax_condition'] ?? 'monotributo';
         $iibb_emisor   = $company['iibb'] ?? ($cuit_emisor ?: '-');
         $fch_inicio    = !empty($company['activity_init']) ? date('d/m/Y', strtotime($company['activity_init'])) : '-';
@@ -169,62 +170,84 @@ class PdfHandler {
             $pdf->rect(20, 20, 555, 800);
 
             // Letra Badge Central
-            $pdf->rect(275, 20, 45, 45, true, true);
-            $pdf->text(288, 52, $letra, 24, true);
-            $pdf->text(279, 62, sprintf('COD. %02d', $cbte_tipo), 8, true);
+            $pdf->rect(275, 20, 45, 45, true, true, [245, 245, 245], [0, 0, 0]);
+            $pdf->text(288, 50, $letra, 22, true);
+            $pdf->text(279, 60, sprintf('COD. %02d', $cbte_tipo), 8, true);
 
             // Indicador de Copia
-            $pdf->text(500, 32, $copy_name, 9, true);
+            $pdf->text(515, 30, $copy_name, 8, true);
 
             // Encabezado Emisor (Izquierda)
             $logo_url = $company['logo_url'] ?? '';
-            $start_y = 40;
+            $start_y = 36;
 
             if (!empty($logo_url)) {
                 $pdf->text(30, 36, '[' . substr($nombre_emisor, 0, 28) . ']', 10, true);
-                $start_y = 50;
+                $start_y = 48;
             } else {
-                $pdf->text(30, $start_y, substr($nombre_emisor, 0, 32), 13, true);
-                $start_y += 13;
+                $pdf->text(30, $start_y, substr($nombre_emisor, 0, 32), 12, true);
+                $start_y += 12;
+            }
+
+            if (!empty($company['trade_name']) && !empty($razon_social) && $company['trade_name'] !== $razon_social) {
+                $pdf->text(30, $start_y, 'Razon Social: ' . substr($razon_social, 0, 32), 8, false);
+                $start_y += 10;
             }
 
             $pdf->text(30, $start_y, 'CUIT: ' . $cuit_emisor, 9, false);
-            $pdf->text(30, $start_y + 11, 'Condicion IVA: ' . ucfirst($cond_emisor), 9, false);
-            $pdf->text(30, $start_y + 22, 'Ingresos Brutos: ' . $iibb_emisor, 9, false);
-            $pdf->text(30, $start_y + 33, 'Inicio de Actividades: ' . $fch_inicio, 9, false);
+            $pdf->text(30, $start_y + 10, 'Condicion IVA: ' . ucfirst($cond_emisor), 9, false);
+            $pdf->text(30, $start_y + 20, 'Ingresos Brutos: ' . $iibb_emisor, 9, false);
+            $pdf->text(30, $start_y + 30, 'Inicio Act.: ' . $fch_inicio, 9, false);
+
+            $dir_emisor = trim(($company['address'] ?? '') . ' ' . ($company['province'] ?? ''));
+            if ($dir_emisor) {
+                $pdf->text(30, $start_y + 40, 'Domicilio: ' . substr($dir_emisor, 0, 36), 8, false);
+            }
 
             // Encabezado Comprobante (Derecha)
-            $pdf->text(340, 40, $label, 13, true);
-            $pdf->text(340, 53, sprintf('Punto de Venta: %04d   Comp. Nro: %08d', $pto_vta, $cbte_nro), 10, true);
+            $pdf->text(340, 36, $label, 13, true);
+            $pdf->text(340, 50, sprintf('Punto de Venta: %04d   Comp. Nro: %08d', $pto_vta, $cbte_nro), 10, true);
             $fch_fmt = date('d/m/Y', strtotime($cbte_fch));
-            $pdf->text(340, 66, 'Fecha de Emision: ' . $fch_fmt, 9, false);
+            $pdf->text(340, 63, 'Fecha de Emision: ' . $fch_fmt, 9, false);
 
             // Línea separadora
-            $pdf->line(20, 92, 575, 92);
+            $pdf->line(20, 96, 575, 96);
 
             // Datos del Cliente Receptor
-            $cliente_nom = substr($order->get_formatted_billing_full_name(), 0, 40);
+            $cliente_nom = substr($order->get_formatted_billing_full_name(), 0, 35);
             $doc_nro     = $order->get_meta('_billing_dni') ?: ($order->get_meta('billing_dni') ?: '-');
             $cond_cli    = ucfirst(str_replace('_', ' ', $order->get_meta('_billing_tax_condition') ?: 'Consumidor Final'));
+            $tel_cli     = $order->get_billing_phone() ?: '-';
+
+            // Domicilio receptor
+            $dir_cli     = trim($order->get_billing_address_1() . ' ' . $order->get_billing_address_2());
+            $ciudad_cli  = $order->get_billing_city();
+            $prov_cli    = $order->get_billing_state();
+            $cp_cli      = $order->get_billing_postcode();
+            $loc_parts   = array_filter([$ciudad_cli, $prov_cli, $cp_cli ? "CP $cp_cli" : '']);
+            $loc_str     = implode(', ', $loc_parts);
 
             $pdf->text(30, 108, 'Cliente: ' . $cliente_nom, 9, true);
-            $pdf->text(30, 120, 'Documento: ' . $doc_nro, 9, false);
-            $pdf->text(30, 132, 'Condicion IVA: ' . $cond_cli, 9, false);
+            $pdf->text(30, 120, 'Documento: ' . $doc_nro . '   Cond. IVA: ' . $cond_cli, 9, false);
+            if ($dir_cli || $loc_str) {
+                $pdf->text(30, 131, 'Domicilio: ' . substr(trim($dir_cli . ' - ' . $loc_str), 0, 50), 8, false);
+            }
+            $pdf->text(30, 142, 'Telefono: ' . $tel_cli, 8, false);
 
             $pdf->text(340, 108, 'Pedido WooCommerce: #' . $order->get_id(), 9, true);
-            $pdf->text(340, 120, 'Metodo de Pago: ' . substr($order->get_payment_method_title(), 0, 30), 9, false);
+            $pdf->text(340, 120, 'Metodo de Pago: ' . substr($order->get_payment_method_title(), 0, 30), 8, false);
 
             // Línea antes de tabla
-            $pdf->line(20, 142, 575, 142);
+            $pdf->line(20, 154, 575, 154);
 
             // Encabezado Tabla Ítems
-            $pdf->rect(20, 140, 555, 20, false, true);
-            $pdf->text(30, 154, 'Descripcion', 9, true);
-            $pdf->text(360, 154, 'Cant.', 9, true);
-            $pdf->text(420, 154, 'Precio Unit.', 9, true);
-            $pdf->text(500, 154, 'Subtotal', 9, true);
+            $pdf->rect(20, 154, 555, 18, false, true);
+            $pdf->text(30, 166, 'Descripcion', 9, true);
+            $pdf->text(360, 166, 'Cant.', 9, true);
+            $pdf->text(420, 166, 'Precio Unit.', 9, true);
+            $pdf->text(500, 166, 'Subtotal', 9, true);
 
-            $y = 175;
+            $y = 186;
             foreach ($order->get_items() as $item) {
                 if ($y > 700) break;
                 $pdf->text(30, $y, substr($item->get_name(), 0, 48), 9, false);

@@ -76,6 +76,8 @@ class PackingSlipHandler {
         $order_id = $order->get_id();
         $date     = $order->get_date_created() ? $order->get_date_created()->date('d/m/Y') : date('d/m/Y');
         $shipping = strip_tags($order->get_formatted_shipping_address() ?: $order->get_formatted_billing_address());
+        $pto_vta  = sprintf('%04d', (int) ($order->get_meta('_arca_pto_vta') ?: ($company['pto_vta'] ?? 1)));
+        $cbte_nro = sprintf('%08d', $order_id);
 
         $pdf = new \WcArca\Services\SimplePdf();
 
@@ -86,12 +88,12 @@ class PackingSlipHandler {
             $pdf->rect(20, 20, 555, 800);
 
             // Letra X Badge
-            $pdf->rect(275, 20, 45, 45, true, true);
-            $pdf->text(290, 52, 'X', 24, true);
-            $pdf->text(280, 62, 'COD. 99', 8, true);
+            $pdf->rect(275, 20, 45, 45, true, true, [245, 245, 245], [0, 0, 0]);
+            $pdf->text(290, 50, 'X', 22, true);
+            $pdf->text(280, 60, 'COD. 99', 8, true);
 
             // Copia
-            $pdf->text(500, 32, $copy_name, 9, true);
+            $pdf->text(515, 30, $copy_name, 8, true);
 
             // Emisor
             $pdf->text(30, 40, substr($emisor_name, 0, 35), 14, true);
@@ -100,13 +102,13 @@ class PackingSlipHandler {
             }
 
             // Remito
-            $pdf->text(340, 40, 'REMITO DE ENTREGA', 14, true);
-            $pdf->text(340, 55, 'Remito Nro: R-' . sprintf('%08d', $order_id), 10, true);
-            $pdf->text(340, 68, 'Fecha: ' . $date, 10, false);
+            $pdf->text(340, 40, 'REMITO DE ENTREGA', 13, true);
+            $pdf->text(340, 53, sprintf('Punto de Venta: %s   Comp. Nro: %s', $pto_vta, $cbte_nro), 9, true);
+            $pdf->text(340, 65, 'Fecha de Emision: ' . $date, 9, false);
 
             // Banner No Válido
-            $pdf->rect(20, 75, 555, 16, true, true);
-            $pdf->text(180, 87, 'DOCUMENTO NO VALIDO COMO FACTURA', 10, true);
+            $pdf->rect(20, 85, 555, 16, true, true, [235, 235, 235], [0, 0, 0]);
+            $pdf->text(180, 96, 'DOCUMENTO NO VALIDO COMO FACTURA', 9, true);
 
             // Datos Envío
             $destinatario = substr($order->get_formatted_shipping_full_name() ?: $order->get_formatted_billing_full_name(), 0, 35);

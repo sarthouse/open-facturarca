@@ -17,10 +17,7 @@ class OrderMetabox {
     }
 
     public static function register_metabox() {
-        $screen = class_exists('\Automattic\WooCommerce\Internal\DataStores\Orders\CustomOrdersTableController') 
-            && \Automattic\WooCommerce\Internal\DataStores\Orders\CustomOrdersTableController::is_order_cache_usage_enabled()
-            ? wc_get_page_screen_id('shop-order')
-            : 'shop_order';
+        $screen = function_exists('wc_get_page_screen_id') ? wc_get_page_screen_id('shop-order') : 'shop_order';
 
         add_meta_box(
             'wc_arca_invoice_box',
@@ -30,6 +27,18 @@ class OrderMetabox {
             'side',
             'high'
         );
+
+        // Si la pantalla es distinta de shop_order tradicional, agregar también a shop_order como fallback
+        if ($screen !== 'shop_order') {
+            add_meta_box(
+                'wc_arca_invoice_box',
+                __('Facturación ARCA / AFIP', 'wc-factura-arca'),
+                [__CLASS__, 'render_metabox'],
+                'shop_order',
+                'side',
+                'high'
+            );
+        }
     }
 
     public static function render_metabox($post_or_order) {

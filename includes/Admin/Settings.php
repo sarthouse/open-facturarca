@@ -474,8 +474,18 @@ class Settings {
 
                     <table class="form-table">
                         <tr>
-                            <th><label>Nombre / Razón Social</label></th>
-                            <td><input type="text" name="name" value="<?php echo esc_attr($company_to_edit['name'] ?? ''); ?>" class="regular-text" required></td>
+                            <th><label>Razón Social (Legal ARCA)</label></th>
+                            <td>
+                                <input type="text" name="name" value="<?php echo esc_attr($company_to_edit['name'] ?? ''); ?>" class="regular-text" placeholder="Ej: Tiago Gabriel Sarthou o Empresa S.A." required>
+                                <p class="description">Nombre legal o titular registrado ante ARCA/AFIP.</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th><label>Nombre de Fantasía (Comercial)</label></th>
+                            <td>
+                                <input type="text" name="trade_name" value="<?php echo esc_attr($company_to_edit['trade_name'] ?? ''); ?>" class="regular-text" placeholder="Ej: La Fatal">
+                                <p class="description">Nombre de la marca comercial o tienda visible en la cabecera del PDF.</p>
+                            </td>
                         </tr>
                         <tr>
                             <th><label>Logo de la Empresa (para PDF)</label></th>
@@ -512,6 +522,22 @@ class Settings {
                         <tr>
                             <th><label>Fecha de Inicio de Actividades</label></th>
                             <td><input type="date" name="activity_init" value="<?php echo esc_attr($company_to_edit['activity_init'] ?? ''); ?>" class="regular-text"></td>
+                        </tr>
+                        <tr>
+                            <th><label>Domicilio Comercial</label></th>
+                            <td><input type="text" name="address" value="<?php echo esc_attr($company_to_edit['address'] ?? ''); ?>" class="regular-text" placeholder="Ej: Av. Corrientes 1234, CABA"></td>
+                        </tr>
+                        <tr>
+                            <th><label>Teléfono de Contacto</label></th>
+                            <td><input type="text" name="phone" value="<?php echo esc_attr($company_to_edit['phone'] ?? ''); ?>" class="regular-text" placeholder="Ej: 011 4321-5678"></td>
+                        </tr>
+                        <tr>
+                            <th><label>Provincia</label></th>
+                            <td><input type="text" name="province" value="<?php echo esc_attr($company_to_edit['province'] ?? ''); ?>" class="regular-text" placeholder="Ej: Ciudad Autónoma de Buenos Aires"></td>
+                        </tr>
+                        <tr>
+                            <th><label>Código Postal (CP)</label></th>
+                            <td><input type="text" name="postcode" value="<?php echo esc_attr($company_to_edit['postcode'] ?? ''); ?>" class="small-text" placeholder="Ej: 1043"></td>
                         </tr>
                         <tr>
                             <th><label>Punto de Venta Web Services</label></th>
@@ -747,11 +773,16 @@ class Settings {
         $data = [
             'id'            => sanitize_key($_POST['company_id'] ?? ''),
             'name'          => sanitize_text_field($_POST['name'] ?? ''),
+            'trade_name'    => sanitize_text_field($_POST['trade_name'] ?? ''),
             'logo_url'      => esc_url_raw($_POST['logo_url'] ?? ''),
             'cuit'          => sanitize_text_field($_POST['cuit'] ?? ''),
             'tax_condition' => sanitize_text_field($_POST['tax_condition'] ?? 'monotributo'),
             'iibb'          => sanitize_text_field($_POST['iibb'] ?? ''),
             'activity_init' => sanitize_text_field($_POST['activity_init'] ?? ''),
+            'address'       => sanitize_text_field($_POST['address'] ?? ''),
+            'phone'         => sanitize_text_field($_POST['phone'] ?? ''),
+            'province'      => sanitize_text_field($_POST['province'] ?? ''),
+            'postcode'      => sanitize_text_field($_POST['postcode'] ?? ''),
             'pto_vta'       => (int) ($_POST['pto_vta'] ?? 1),
             'environment'   => sanitize_text_field($_POST['environment'] ?? 'testing'),
             'cert_path'     => sanitize_text_field($_POST['cert_path'] ?? ''),
