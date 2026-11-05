@@ -13,6 +13,9 @@ class Settings {
         add_action('woocommerce_update_options_arca_invoicing', [__CLASS__, 'save_settings']);
         add_action('admin_enqueue_scripts', [__CLASS__, 'enqueue_media_uploader']);
 
+        // Añadir menú propio en la barra lateral de WordPress (debajo de WooCommerce)
+        add_action('admin_menu', [__CLASS__, 'add_sidebar_menu'], 60);
+
         // Handlers para acciones de certificados y empresas
         add_action('admin_post_wc_arca_generate_cert_request', [__CLASS__, 'handle_generate_csr']);
         add_action('admin_post_wc_arca_save_company', [__CLASS__, 'handle_save_company']);
@@ -21,9 +24,65 @@ class Settings {
     }
 
     public static function enqueue_media_uploader($hook) {
-        if (isset($_GET['tab']) && $_GET['tab'] === 'arca_invoicing') {
+        if (isset($_GET['tab']) && $_GET['tab'] === 'arca_invoicing' || (isset($_GET['page']) && strpos($_GET['page'], 'open-facturarca') !== false)) {
             wp_enqueue_media();
         }
+    }
+
+    /**
+     * Registra el menú principal y submenús en la barra lateral de WordPress
+     */
+    public static function add_sidebar_menu() {
+        // Menú principal propio con ícono de comprobante
+        add_menu_page(
+            __('Open FacturARCA', 'open-facturarca'),
+            __('Facturación ARCA', 'open-facturarca'),
+            'manage_woocommerce',
+            'open-facturarca',
+            [__CLASS__, 'render_sidebar_page'],
+            'dashicons-media-spreadsheet',
+            56 // Justo debajo de WooCommerce y Productos
+        );
+
+        // Submenús directos para acceso rápido
+        add_submenu_page(
+            'open-facturarca',
+            __('Empresas Emisoras', 'open-facturarca'),
+            __('🏢 Empresas', 'open-facturarca'),
+            'manage_woocommerce',
+            'open-facturarca',
+            [__CLASS__, 'render_sidebar_page']
+        );
+
+        add_submenu_page(
+            'open-facturarca',
+            __('Generador de Certificados', 'open-facturarca'),
+            __('🔑 Certificados y CSR', 'open-facturarca'),
+            'manage_woocommerce',
+            'admin.php?page=wc-settings&tab=arca_invoicing&section=cert_tool'
+        );
+
+        add_submenu_page(
+            'open-facturarca',
+            __('Estadísticas y Libros', 'open-facturarca'),
+            __('📊 Estadísticas e IVA', 'open-facturarca'),
+            'manage_woocommerce',
+            'admin.php?page=wc-settings&tab=arca_invoicing&section=reports'
+        );
+
+        add_submenu_page(
+            'open-facturarca',
+            __('Ajustes de Automatización', 'open-facturarca'),
+            __('⚙️ Ajustes', 'open-facturarca'),
+            'manage_woocommerce',
+            'admin.php?page=wc-settings&tab=arca_invoicing&section=automation'
+        );
+    }
+
+    public static function render_sidebar_page() {
+        // Redirigir a la pestaña nativa de WooCommerce o renderizarla directamente
+        wp_safe_redirect(admin_url('admin.php?page=wc-settings&tab=arca_invoicing'));
+        exit;
     }
 
     public static function add_settings_tab($settings_tabs) {

@@ -25,6 +25,24 @@ define('OPEN_FACTURARCA_URL', plugin_dir_url(__FILE__));
 // Comprobar requerimientos antes de inicializar
 add_action('plugins_loaded', 'open_facturarca_init_plugin');
 
+// Añadir enlaces útiles en la lista de plugins (Ajustes y Ver Documentación)
+add_filter('plugin_action_links_' . plugin_basename(__FILE__), 'open_facturarca_action_links');
+add_filter('plugin_row_meta', 'open_facturarca_row_meta', 10, 2);
+
+function open_facturarca_action_links($links) {
+    $settings_link = '<a href="' . esc_url(admin_url('admin.php?page=wc-settings&tab=arca_invoicing')) . '">' . __('Ajustes', 'open-facturarca') . '</a>';
+    array_unshift($links, $settings_link);
+    return $links;
+}
+
+function open_facturarca_row_meta($links, $file) {
+    if ($file === plugin_basename(__FILE__)) {
+        $links[] = '<a href="https://github.com/sarthouse/open-facturarca" target="_blank">' . __('Ver en GitHub', 'open-facturarca') . '</a>';
+        $links[] = '<a href="https://github.com/sarthouse/open-facturarca/blob/main/TUTORIAL.md" target="_blank">' . __('Guía de Configuración', 'open-facturarca') . '</a>';
+    }
+    return $links;
+}
+
 function open_facturarca_init_plugin() {
     $missing_requirements = [];
 
