@@ -521,7 +521,7 @@ class Settings {
             <h3>Generador Automático de Clave Privada y CSR</h3>
             <p>Este asistente genera directamente la clave criptográfica y la solicitud de certificado (CSR) para subir al portal de ARCA/AFIP sin usar comandos de terminal.</p>
 
-            <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
+            <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" onsubmit="window.onbeforeunload = null;">
                 <input type="hidden" name="action" value="wc_arca_generate_cert_request">
                 <?php wp_nonce_field('wc_arca_gen_cert_nonce'); ?>
 
@@ -540,6 +540,17 @@ class Settings {
                     <button type="submit" class="button button-primary">Generar Clave y CSR Ahora</button>
                 </p>
             </form>
+
+            <script type="text/javascript">
+            jQuery(document).ready(function($) {
+                // Desactivar alerta de "abandonar el sitio" en esta pestaña
+                window.onbeforeunload = null;
+                $(window).off('beforeunload');
+                if (typeof $.fn.dirtyForms !== 'undefined') {
+                    $('form').dirtyForms('setClean');
+                }
+            });
+            </script>
 
             <hr style="margin: 25px 0;">
 
@@ -671,13 +682,40 @@ class Settings {
         try {
             $pair = CertGenerator::generate_key_and_csr($company_name, $cuit);
 
+            // Asegurar directorio certs/
+            $certs_dir = OPEN_FACTURARCA_DIR . 'certs/';
+            if (!is_dir($certs_dir)) {
+                wp_mkdir_p($certs_dir);
+            }
+
             // Guardar clave privada en directorio protegido certs/
-            $key_file = OPEN_FACTURARCA_DIR . "certs/{$cuit}.key";
+            $key_file = $certs_dir . "{$cuit}.key";
             file_put_contents($key_file, $pair['private_key']);
 
-            // Entregar el CSR para descarga en el navegador
-            header('Content-Type: application/pkcs10');
+            // Actualizar o vincular clave a la empresa con ese CUIT automáticamente
+            $companies = CompanyManager::get_companies();
+            foreach ($companies as $id => $c) {
+                if ($c['cuit'] === $cuit) {
+                    $c['key_path'] = $key_file;
+                    CompanyManager::save_company($c);
+                    break;
+                }
+            }
+
+            // Limpiar cualquier buffer previo de WordPress para forzar descarga limpia
+            if (ob_get_level()) {
+                ob_end_clean();
+            }
+
+            // Entregar el CSR para descarga forzada en el navegador
+            header('Content-Description: File Transfer');
+            header('Content-Type: application/octet-stream');
             header('Content-Disposition: attachment; filename="pedido_' . $cuit . '.csr"');
+            header('Content-Transfer-Encoding: binary');
+            header('Expires: 0');
+            header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
+            header('Pragma: public');
+            header('Content-Length: ' . strlen($pair['csr']));
             echo $pair['csr'];
             exit;
 
