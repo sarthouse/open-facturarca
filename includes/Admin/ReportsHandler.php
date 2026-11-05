@@ -12,9 +12,9 @@ class ReportsHandler {
     }
 
     /**
-     * Obtiene los pedidos facturados dentro de un rango de fechas
+     * Obtiene los pedidos facturados dentro de un rango de fechas y opcionalmente por empresa
      */
-    public static function get_invoiced_orders($start_date = '', $end_date = '') {
+    public static function get_invoiced_orders($start_date = '', $end_date = '', $company_id = '') {
         $args = [
             'limit'      => -1,
             'status'     => ['completed', 'processing', 'refunded'],
@@ -29,14 +29,27 @@ class ReportsHandler {
             $args['date_created'] = '<=' . $end_date . ' 23:59:59';
         }
 
-        return wc_get_orders($args);
+        $orders = wc_get_orders($args);
+
+        if (!empty($company_id)) {
+            $orders = array_filter($orders, function($order) use ($company_id) {
+                $order_company = $order->get_meta('_arca_company_id');
+                // Compatibilidad con pedidos emitidos antes del soporte multi-empresa
+                if (empty($order_company)) {
+                    $order_company = 'default';
+                }
+                return $order_company === $company_id;
+            });
+        }
+
+        return $orders;
     }
 
     /**
      * Calcula métricas y estadísticas de facturación
      */
-    public static function get_analytics($start_date = '', $end_date = '') {
-        $orders = self::get_invoiced_orders($start_date, $end_date);
+    public static function get_analytics($start_date = '', $end_date = '', $company_id = '') {
+        $orders = self::get_invoiced_orders($start_date, $end_date, $company_id);
 
         $total_invoiced = 0;
         $total_neto = 0;
@@ -104,9 +117,11 @@ class ReportsHandler {
 
         $start_date = sanitize_text_field($_POST['start_date'] ?? '');
         $end_date   = sanitize_text_field($_POST['end_date'] ?? '');
-        $orders     = self::get_invoiced_orders($start_date, $end_date);
+        $company_id = sanitize_key($_POST['company_id'] ?? '');
+        $orders     = self::get_invoiced_orders($start_date, $end_date, $company_id);
 
-        $filename = 'Libro_IVA_Ventas_' . ($start_date ?: 'inicio') . '_al_' . ($end_date ?: date('Y-m-d')) . '.csv';
+        $suffix = $company_id ? "_{$company_id}" : '';
+        $filename = 'Libro_IVA_Ventas' . $suffix . '_' . ($start_date ?: 'inicio') . '_al_' . ($end_date ?: date('Y-m-d')) . '.csv';
 
         header('Content-Type: text/csv; charset=utf-8');
         header('Content-Disposition: attachment; filename="' . $filename . '"');
@@ -190,9 +205,11 @@ class ReportsHandler {
 
         $start_date = sanitize_text_field($_POST['start_date'] ?? '');
         $end_date   = sanitize_text_field($_POST['end_date'] ?? '');
-        $analytics  = self::get_analytics($start_date, $end_date);
+        $company_id = sanitize_key($_POST['company_id'] ?? '');
+        $analytics  = self::get_analytics($start_date, $end_date, $company_id);
 
-        $filename = 'Coeficientes_IIBB_Provincias_' . ($start_date ?: 'inicio') . '_al_' . ($end_date ?: date('Y-m-d')) . '.csv';
+        $suffix = $company_id ? "_{$company_id}" : '';
+        $filename = 'Coeficientes_IIBB_Provincias' . $suffix . '_' . ($start_date ?: 'inicio') . '_al_' . ($end_date ?: date('Y-m-d')) . '.csv';
 
         header('Content-Type: text/csv; charset=utf-8');
         header('Content-Disposition: attachment; filename="' . $filename . '"');

@@ -21,4 +21,8 @@ Thumbs.db
 .vscode/
 *.sublime-workspace
 
+# Build & Packages
+build/
+*.zip
+
 utils

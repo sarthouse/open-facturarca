@@ -19,11 +19,60 @@ class Settings {
         add_action('admin_post_wc_arca_delete_company', [__CLASS__, 'handle_delete_company']);
         add_action('admin_post_wc_arca_upload_certificate', [__CLASS__, 'handle_upload_certificate']);
         add_action('admin_post_wc_arca_save_automation', [__CLASS__, 'handle_save_automation']);
+
+        // Alertas globales de vencimiento de certificados
+        add_action('admin_notices', [__CLASS__, 'render_cert_expiration_notices']);
     }
 
     public static function enqueue_media_uploader($hook) {
         if (isset($_GET['tab']) && $_GET['tab'] === 'arca_invoicing' || (isset($_GET['page']) && strpos($_GET['page'], 'open-facturarca') !== false)) {
             wp_enqueue_media();
+        }
+    }
+
+    /**
+     * Muestra avisos administrativos si un certificado de ARCA está vencido o próximo a vencer (<= 30 días)
+     */
+    public static function render_cert_expiration_notices() {
+        if (!current_user_can('manage_woocommerce')) {
+            return;
+        }
+
+        $screen = get_current_screen();
+        // Mostrar en el dashboard, pedidos de WooCommerce y páginas del plugin
+        if ($screen && !in_array($screen->id, ['dashboard', 'edit-shop_order', 'shop_order', 'toplevel_page_open-facturarca', 'facturacion-arca_page_open-facturarca-cert-tool', 'facturacion-arca_page_open-facturarca-reports', 'facturacion-arca_page_open-facturarca-automation', 'facturacion-arca_page_open-facturarca-guide'], true) && strpos($screen->id, 'open-facturarca') === false) {
+            return;
+        }
+
+        $companies = CompanyManager::get_companies();
+        foreach ($companies as $company) {
+            if (empty($company['cert_path']) || !file_exists($company['cert_path'])) {
+                continue;
+            }
+
+            $info = CompanyManager::get_cert_expiration_info($company['cert_path']);
+            $comp_name = esc_html($company['name'] ?: $company['cuit']);
+            $renew_url = esc_url(admin_url('admin.php?page=open-facturarca-cert-tool'));
+
+            if (!$info['valid']) {
+                ?>
+                <div class="notice notice-error">
+                    <p>
+                        <strong>[Open FacturARCA] Certificado Vencido:</strong> El certificado digital de ARCA para la empresa <strong><?php echo $comp_name; ?></strong> ha expirado (<?php echo esc_html($info['expiration_date'] ?: 'Fecha inválida'); ?>). No será posible autorizar comprobantes electrónicos hasta renovarlo.
+                        <a href="<?php echo $renew_url; ?>" class="button button-small" style="margin-left: 10px;">Renovar Certificado</a>
+                    </p>
+                </div>
+                <?php
+            } elseif ($info['days_left'] <= 30) {
+                ?>
+                <div class="notice notice-warning">
+                    <p>
+                        <strong>[Open FacturARCA] Certificado Próximo a Vencer:</strong> El certificado digital de ARCA para la empresa <strong><?php echo $comp_name; ?></strong> vencerá en <strong><?php echo esc_html($info['days_left']); ?> días</strong> (Fecha: <?php echo esc_html($info['expiration_date']); ?>). Genere un nuevo CSR y certifíquelo en ARCA con anticipación.
+                        <a href="<?php echo $renew_url; ?>" class="button button-small" style="margin-left: 10px;">Gestionar Certificados</a>
+                    </p>
+                </div>
+                <?php
+            }
         }
     }
 
@@ -345,15 +394,27 @@ class Settings {
     private static function render_reports_view() {
         $start_date = isset($_GET['start_date']) ? sanitize_text_field($_GET['start_date']) : date('Y-m-01');
         $end_date   = isset($_GET['end_date']) ? sanitize_text_field($_GET['end_date']) : date('Y-m-d');
-        $analytics  = ReportsHandler::get_analytics($start_date, $end_date);
+        $company_id = isset($_GET['company_id']) ? sanitize_key($_GET['company_id']) : '';
+        $companies  = CompanyManager::get_companies();
+        $analytics  = ReportsHandler::get_analytics($start_date, $end_date, $company_id);
         ?>
         <div style="background: #fff; padding: 20px; border: 1px solid #ccd0d4; border-radius: 4px; margin-bottom: 20px;">
-            <h3 style="margin-top: 0;">Filtro de Período</h3>
-            <form method="get" action="<?php echo esc_url(admin_url('admin.php')); ?>" style="display: flex; gap: 15px; align-items: flex-end;">
-                <input type="hidden" name="page" value="wc-settings">
-                <input type="hidden" name="tab" value="arca_invoicing">
+            <h3 style="margin-top: 0;">Filtros de Período y Empresa Emisora</h3>
+            <form method="get" action="<?php echo esc_url(admin_url('admin.php')); ?>" style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;">
+                <input type="hidden" name="page" value="open-facturarca-reports">
                 <input type="hidden" name="section" value="reports">
 
+                <div>
+                    <label style="font-weight: bold; display: block; margin-bottom: 4px;">Empresa Emisora:</label>
+                    <select name="company_id" style="min-width: 200px;">
+                        <option value="">-- Todas las Empresas --</option>
+                        <?php foreach ($companies as $id => $c): ?>
+                            <option value="<?php echo esc_attr($id); ?>" <?php selected($id, $company_id); ?>>
+                                <?php echo esc_html($c['name']); ?> (<?php echo esc_html($c['cuit']); ?>)
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
                 <div>
                     <label style="font-weight: bold; display: block; margin-bottom: 4px;">Desde:</label>
                     <input type="date" name="start_date" value="<?php echo esc_attr($start_date); ?>">
@@ -396,6 +457,7 @@ class Settings {
             <div style="display: flex; gap: 15px; flex-wrap: wrap;">
                 <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
                     <input type="hidden" name="action" value="wc_arca_export_libro_iva">
+                    <input type="hidden" name="company_id" value="<?php echo esc_attr($company_id); ?>">
                     <input type="hidden" name="start_date" value="<?php echo esc_attr($start_date); ?>">
                     <input type="hidden" name="end_date" value="<?php echo esc_attr($end_date); ?>">
                     <?php wp_nonce_field('wc_arca_export_reports_nonce'); ?>
@@ -406,6 +468,7 @@ class Settings {
 
                 <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
                     <input type="hidden" name="action" value="wc_arca_export_iibb_provincias">
+                    <input type="hidden" name="company_id" value="<?php echo esc_attr($company_id); ?>">
                     <input type="hidden" name="start_date" value="<?php echo esc_attr($start_date); ?>">
                     <input type="hidden" name="end_date" value="<?php echo esc_attr($end_date); ?>">
                     <?php wp_nonce_field('wc_arca_export_reports_nonce'); ?>
@@ -614,6 +677,7 @@ class Settings {
                     <th>Pto. Venta</th>
                     <th>Entorno</th>
                     <th>Estado Certificados</th>
+                    <th>Vencimiento Certificado</th>
                     <th>Acciones</th>
                 </tr>
             </thead>
@@ -621,6 +685,7 @@ class Settings {
                 <?php foreach ($companies as $id => $c): 
                     $cert_ok = !empty($c['cert_path']) && file_exists($c['cert_path']);
                     $key_ok  = !empty($c['key_path']) && file_exists($c['key_path']);
+                    $cert_info = $cert_ok ? CompanyManager::get_cert_expiration_info($c['cert_path']) : null;
                 ?>
                 <tr>
                     <td><strong><?php echo esc_html($c['name']); ?></strong></td>
@@ -637,6 +702,25 @@ class Settings {
                             <span style="color: #2e7d32; font-weight: bold;">Configurados</span>
                         <?php else: ?>
                             <span style="color: #c62828;">Faltan certificados</span>
+                        <?php endif; ?>
+                    </td>
+                    <td>
+                        <?php if ($cert_ok && $cert_info && $cert_info['valid']): ?>
+                            <?php if ($cert_info['days_left'] <= 30): ?>
+                                <span style="background: #fff3cd; color: #856404; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; border: 1px solid #ffeeba;">
+                                    Vence en <?php echo esc_html($cert_info['days_left']); ?> días (<?php echo esc_html($cert_info['expiration_date']); ?>)
+                                </span>
+                            <?php else: ?>
+                                <span style="color: #2e7d32; font-size: 12px;">
+                                    Vence: <?php echo esc_html($cert_info['expiration_date']); ?> (<?php echo esc_html($cert_info['days_left']); ?> días)
+                                </span>
+                            <?php endif; ?>
+                        <?php elseif ($cert_ok && $cert_info && !$cert_info['valid']): ?>
+                            <span style="background: #f8d7da; color: #721c24; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; border: 1px solid #f5c6cb;">
+                                Vencido (<?php echo esc_html($cert_info['expiration_date'] ?: 'Fecha inválida'); ?>)
+                            </span>
+                        <?php else: ?>
+                            <span style="color: #888; font-size: 12px;">-</span>
                         <?php endif; ?>
                     </td>
                     <td>

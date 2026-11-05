@@ -79,6 +79,55 @@ class CompanyManager {
     }
 
     /**
+     * Obtiene los días restantes de vigencia de un certificado X.509
+     *
+     * @param string $cert_path Ruta absoluta al archivo .crt
+     * @return array [ 'valid' => bool, 'days_left' => int|null, 'expiration_date' => string|null, 'error' => string|null ]
+     */
+    public static function get_cert_expiration_info($cert_path) {
+        if (empty($cert_path) || !file_exists($cert_path)) {
+            return [
+                'valid'           => false,
+                'days_left'       => null,
+                'expiration_date' => null,
+                'error'           => 'Certificado no encontrado',
+            ];
+        }
+
+        $content = file_get_contents($cert_path);
+        if (!$content) {
+            return [
+                'valid'           => false,
+                'days_left'       => null,
+                'expiration_date' => null,
+                'error'           => 'No se pudo leer el archivo',
+            ];
+        }
+
+        $parsed = @openssl_x509_parse($content);
+        if (!$parsed || !isset($parsed['validTo_time_t'])) {
+            return [
+                'valid'           => false,
+                'days_left'       => null,
+                'expiration_date' => null,
+                'error'           => 'Certificado X.509 inválido',
+            ];
+        }
+
+        $valid_to = (int) $parsed['validTo_time_t'];
+        $now = time();
+        $diff_seconds = $valid_to - $now;
+        $days_left = (int) floor($diff_seconds / 86400);
+
+        return [
+            'valid'           => $days_left >= 0,
+            'days_left'       => $days_left,
+            'expiration_date' => gmdate('d/m/Y H:i', $valid_to),
+            'error'           => null,
+        ];
+    }
+
+    /**
      * Elimina una empresa
      */
     public static function delete_company($id) {

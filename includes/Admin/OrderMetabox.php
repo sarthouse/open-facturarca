@@ -10,10 +10,24 @@ defined('ABSPATH') || exit;
 class OrderMetabox {
     public static function init() {
         add_action('add_meta_boxes', [__CLASS__, 'register_metabox']);
+        add_action('admin_notices', [__CLASS__, 'render_order_notices']);
         add_action('admin_post_wc_arca_manual_issue', [__CLASS__, 'handle_manual_issue']);
         add_action('admin_post_wc_arca_manual_credit_note', [__CLASS__, 'handle_manual_credit_note']);
         add_action('admin_post_wc_arca_send_invoice_email', [__CLASS__, 'handle_send_invoice_email']);
         add_action('admin_post_wc_arca_send_slip_email', [__CLASS__, 'handle_send_slip_email']);
+    }
+
+    public static function render_order_notices() {
+        if (!isset($_GET['arca_notice'])) return;
+
+        $notice = sanitize_text_field($_GET['arca_notice']);
+        $msg    = isset($_GET['arca_msg']) ? urldecode($_GET['arca_msg']) : '';
+
+        if ($notice === 'success') {
+            echo '<div class="notice notice-success is-dismissible"><p><strong>Open FacturARCA:</strong> ' . esc_html__('Comprobante emitido y autorizado con éxito por ARCA.', 'open-facturarca') . '</p></div>';
+        } elseif ($notice === 'error') {
+            echo '<div class="notice notice-error is-dismissible"><p><strong>Open FacturARCA - Error al Facturar:</strong> ' . esc_html($msg ?: __('Ocurrió un error al procesar el comprobante.', 'open-facturarca')) . '</p></div>';
+        }
     }
 
     public static function register_metabox() {

@@ -2,7 +2,7 @@
 namespace WcArca\Invoices;
 
 use WcArca\Services\CompanyManager;
-use WcArca\Services\SimplePdf;
+use WcArca\Services\DompdfRenderer;
 
 defined('ABSPATH') || exit;
 
@@ -48,7 +48,7 @@ class PackingSlipHandler {
         }
 
         $pdf_content = self::build_packing_slip_pdf($order);
-        $filename = "Remito_R-" . sprintf('%08d', $order_id) . ".pdf";
+        $filename = "Remito_X-" . sprintf('%08d', $order_id) . ".pdf";
 
         header('Content-Type: application/pdf');
         header('Content-Disposition: inline; filename="' . $filename . '"');
@@ -95,15 +95,16 @@ class PackingSlipHandler {
         ];
 
         $template_file = OPEN_FACTURARCA_DIR . 'templates/packing-slip.php';
-        $pdf = new SimplePdf();
+        $full_html = '';
 
         foreach ($copies as $copy_name) {
-            $pdf->add_page();
+            ob_start();
             if (file_exists($template_file)) {
                 include $template_file;
             }
+            $full_html .= ob_get_clean();
         }
 
-        return $pdf->output();
+        return DompdfRenderer::render_html_to_pdf($full_html);
     }
 }

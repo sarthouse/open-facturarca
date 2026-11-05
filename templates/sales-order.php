@@ -1,177 +1,211 @@
 <?php
 /**
- * Plantilla de Renderizado PDF para Nota de Pedido / Venta
- * Letra X - COD. 99
+ * Plantilla HTML de Nota de Pedido / Venta para Dompdf
+ * Letra X - COD. 099
  *
  * Variables esperadas:
- * @var \WcArca\Services\SimplePdf $pdf
- * @var string $copy_name
- * @var array $data
+ * @var WC_Order $order
+ * @var array    $company
+ * @var string   $pto_vta
+ * @var string   $cbte_nro
+ * @var string   $date
+ * @var string   $clean_doc
+ * @var string   $customer_address
+ * @var float    $subtotal
+ * @var float    $total
+ * @var string   $copy_name
  */
 defined('ABSPATH') || exit;
 
-$order         = $data['order'];
-$company       = $data['company'];
-$pto_vta       = $data['pto_vta'];
-$cbte_nro      = $data['cbte_nro'];
-$date          = $data['date'];
-$clean_doc     = $data['clean_doc'];
-$customer_address = $data['customer_address'];
-$subtotal      = $data['subtotal'];
-$total         = $data['total'];
-$emisor_name   = !empty($company['trade_name']) ? $company['trade_name'] : ($company['name'] ?? get_bloginfo('name'));
-$razon_social  = $company['name'] ?? '';
-$emisor_cuit   = $company['cuit'] ?? '';
+$emisor_name  = !empty($company['trade_name']) ? $company['trade_name'] : ($company['name'] ?? get_bloginfo('name'));
+$razon_social = $company['name'] ?? '';
+$emisor_cuit  = $company['cuit'] ?? '';
+$logo_url     = $company['logo_url'] ?? '';
 
-// Marco exterior
-$pdf->rect(20, 20, 555, 800);
-
-// Letra Badge Central X (COD. 99)
-$pdf->rect(275, 20, 45, 40, true, true, [245, 245, 245], [0, 0, 0]);
-$pdf->text(291, 46, 'X', 20, true);
-$pdf->text(280, 56, 'COD. 99', 8, true);
-
-// Leyenda obligatoria debajo de la letra
-$pdf->text(225, 70, 'DOCUMENTO NO VALIDO', 8, true);
-$pdf->text(236, 80, 'COMO FACTURA', 8, true);
-
-// Indicador de Copia
-$pdf->text(515, 30, $copy_name, 8, true);
-
-// Emisor (Izquierda)
-$logo_url = $company['logo_url'] ?? '';
-$y_emisor = 34;
-
-if (!empty($logo_url)) {
-    $has_logo = $pdf->image($logo_url, 30, 24, 80, 28);
-    if ($has_logo) {
-        $y_emisor = 58;
-    } else {
-        $pdf->text(30, $y_emisor, substr($emisor_name, 0, 26), 12, true);
-        $y_emisor += 13;
-    }
-} else {
-    $pdf->text(30, $y_emisor, substr($emisor_name, 0, 26), 12, true);
-    $y_emisor += 13;
-}
-
-if (!empty($razon_social) && $emisor_name !== $razon_social && empty($logo_url)) {
-    $pdf->text(30, $y_emisor, 'Razon Social: ' . substr($razon_social, 0, 28), 8, false);
-    $y_emisor += 10;
-}
-
-if (!empty($emisor_cuit)) {
-    $pdf->text(30, $y_emisor, 'CUIT: ' . $emisor_cuit, 8, false);
-    $y_emisor += 10;
-}
-if (!empty($company['address'])) {
-    $dir = trim($company['address'] . (!empty($company['province']) ? ', ' . $company['province'] : ''));
-    $pdf->text(30, $y_emisor, 'Domicilio: ' . substr($dir, 0, 36), 8, false);
-    $y_emisor += 10;
-}
-if (!empty($company['phone'])) {
-    $pdf->text(30, $y_emisor, 'Telefono: ' . substr($company['phone'], 0, 25), 8, false);
-}
-
-// Comprobante (Derecha)
-$pdf->text(340, 36, 'NOTA DE PEDIDO / VENTA', 11, true);
-$pdf->text(340, 50, sprintf('Pto. Vta: %s   Comp: %s', $pto_vta, $cbte_nro), 8, true);
-$pdf->text(340, 62, 'Fecha de Emision: ' . $date, 8, false);
-
-// Separador
-$pdf->line(20, 95, 575, 95);
-
-// Cliente / Receptor (Razón Social estandarizado)
-$cond_cli = ucfirst(str_replace('_', ' ', $order->get_meta('_billing_tax_condition') ?: 'Consumidor Final'));
-$pdf->text(30, 108, 'Razon Social: ' . substr($order->get_formatted_billing_full_name(), 0, 35), 8, true);
-$pdf->text(30, 119, 'Documento: ' . $clean_doc . '   Cond. IVA: ' . $cond_cli, 8, false);
-$pdf->text(30, 130, 'Domicilio: ' . substr($customer_address, 0, 48), 8, false);
-$pdf->text(30, 141, 'Telefono: ' . substr($order->get_billing_phone() ?: '-', 0, 20), 8, false);
-
-$pdf->text(340, 108, 'Pedido WooCommerce: #' . $order->get_id(), 8, true);
-$pdf->text(340, 119, 'Condicion de Venta: ' . substr($order->get_payment_method_title() ?: 'Contado', 0, 25), 8, false);
-$pdf->text(340, 130, 'Email: ' . substr($order->get_billing_email() ?: '-', 0, 30), 8, false);
-
-// Encabezado de Tabla de Ítems
-$pdf->line(20, 154, 575, 154);
-$pdf->rect(20, 154, 555, 18, false, true, [240, 240, 240], [0, 0, 0]);
-$pdf->text(30, 166, 'Descripcion del Producto', 8, true);
-$pdf->text(300, 166, 'Cant.', 8, true);
-$pdf->text(340, 166, 'U.M.', 8, true);
-$pdf->text(400, 166, 'Precio Unit.', 8, true);
-$pdf->text(500, 166, 'Subtotal', 8, true);
-
-$y = 186;
-foreach ($order->get_items() as $item) {
-    if ($y > 650) break;
-    $qty = (float) $item->get_quantity();
-    $subtotal_line = (float) $order->get_item_subtotal($item);
-    $price_unit = $qty > 0 ? ($subtotal_line / $qty) : 0;
-
-    $pdf->text(30, $y, substr($item->get_name(), 0, 45), 8, false);
-    $pdf->text(300, $y, number_format($qty, 2, ',', '.'), 8, false);
-    $pdf->text(340, $y, 'unidades', 7, false);
-    $pdf->text(400, $y, '$' . number_format($price_unit, 2, ',', '.'), 8, false);
-    $pdf->text(500, $y, '$' . number_format($subtotal_line, 2, ',', '.'), 8, false);
-    $pdf->line(20, $y + 4, 575, $y + 4, 0.5);
-    $y += 16;
-}
-
-// Descuentos (Cupones)
+$cliente_nombre = $order->get_formatted_billing_full_name() ?: $order->get_formatted_shipping_full_name();
+$telefono       = $order->get_billing_phone() ?: '-';
+$email          = $order->get_billing_email() ?: '-';
 $discount_total = (float) $order->get_total_discount();
-if ($discount_total > 0 && $y <= 660) {
-    $coupon_codes = implode(', ', $order->get_coupon_codes());
-    $desc_label = 'Descuento' . ($coupon_codes ? " ({$coupon_codes})" : '');
-    $pdf->text(30, $y, substr($desc_label, 0, 45), 8, false);
-    $pdf->text(300, $y, '1,00', 8, false);
-    $pdf->text(340, $y, 'unidades', 7, false);
-    $pdf->text(400, $y, '-$' . number_format($discount_total, 2, ',', '.'), 8, false);
-    $pdf->text(500, $y, '-$' . number_format($discount_total, 2, ',', '.'), 8, false);
-    $pdf->line(20, $y + 4, 575, $y + 4, 0.5);
-    $y += 16;
-}
-
-// Recargos / Tasas (Fees)
-foreach ($order->get_fees() as $fee) {
-    if ($y > 670) break;
-    $fee_total = (float) $fee->get_total();
-    $pdf->text(30, $y, substr($fee->get_name(), 0, 45), 8, false);
-    $pdf->text(300, $y, '1,00', 8, false);
-    $pdf->text(340, $y, 'servicios', 7, false);
-    $pdf->text(400, $y, '$' . number_format($fee_total, 2, ',', '.'), 8, false);
-    $pdf->text(500, $y, '$' . number_format($fee_total, 2, ',', '.'), 8, false);
-    $pdf->line(20, $y + 4, 575, $y + 4, 0.5);
-    $y += 16;
-}
-
-// Envío
 $shipping_total = (float) $order->get_shipping_total();
-if ($shipping_total > 0 && $y <= 680) {
-    $ship_name = $order->get_shipping_method() ?: 'Envio a domicilio';
-    $pdf->text(30, $y, substr($ship_name, 0, 45), 8, false);
-    $pdf->text(300, $y, '1,00', 8, false);
-    $pdf->text(340, $y, 'servicios', 7, false);
-    $pdf->text(400, $y, '$' . number_format($shipping_total, 2, ',', '.'), 8, false);
-    $pdf->text(500, $y, '$' . number_format($shipping_total, 2, ',', '.'), 8, false);
-    $pdf->line(20, $y + 4, 575, $y + 4, 0.5);
-    $y += 16;
-}
+?>
+<div class="voucher-page">
+    <table class="border-box-table">
+        <!-- ENCABEZADO -->
+        <tr>
+            <td colspan="2" style="padding: 0;">
+                <table class="header-table">
+                    <tr>
+                        <!-- Columna Izquierda: Emisor -->
+                        <td class="header-col-left">
+                            <?php if (!empty($logo_url)): ?>
+                                <img src="<?php echo esc_url($logo_url); ?>" alt="Logo" class="logo">
+                            <?php endif; ?>
+                            <div class="brand-title"><?php echo esc_html($emisor_name); ?></div>
+                            <?php if (!empty($razon_social) && $emisor_name !== $razon_social): ?>
+                                <div class="meta-line"><strong>Razón Social:</strong> <?php echo esc_html($razon_social); ?></div>
+                            <?php endif; ?>
+                            <?php if (!empty($emisor_cuit)): ?>
+                                <div class="meta-line"><strong>CUIT:</strong> <?php echo esc_html($emisor_cuit); ?></div>
+                            <?php endif; ?>
+                            <?php if (!empty($company['address'])): 
+                                $dir_full = $company['address'] . (!empty($company['province']) ? ', ' . $company['province'] : '') . (!empty($company['postcode']) ? ' (CP ' . $company['postcode'] . ')' : '');
+                            ?>
+                                <div class="meta-line"><strong>Domicilio:</strong> <?php echo esc_html($dir_full); ?></div>
+                            <?php endif; ?>
+                            <?php if (!empty($company['phone'])): ?>
+                                <div class="meta-line"><strong>Teléfono:</strong> <?php echo esc_html($company['phone']); ?></div>
+                            <?php endif; ?>
+                        </td>
 
-// Observaciones / Notas
-if ($order->get_customer_note() && $y <= 690) {
-    $pdf->text(30, $y + 6, 'Obs: ' . substr($order->get_customer_note(), 0, 80), 7, false);
-}
+                        <!-- Columna Central: Letra Badge -->
+                        <td class="header-col-center">
+                            <span class="letter-badge">X</span>
+                            <span class="letter-code">COD. 099</span>
+                            <div class="non-fiscal-warning">
+                                Documento no válido como factura
+                            </div>
+                        </td>
 
-// Resumen de Totales
-$pdf->rect(360, 715, 215, 40);
-$pdf->text(370, 727, 'Subtotal: $' . number_format($subtotal, 2, ',', '.'), 8, false);
-if ($discount_total > 0) {
-    $pdf->text(370, 737, 'Descuentos: -$' . number_format($discount_total, 2, ',', '.'), 8, false);
-}
-$pdf->line(360, 741, 575, 741);
-$pdf->text(370, 751, 'TOTAL: $' . number_format($total, 2, ',', '.'), 11, true);
+                        <!-- Columna Derecha: Datos del Pedido -->
+                        <td class="header-col-right">
+                            <div class="copy-type"><?php echo esc_html($copy_name); ?></div>
+                            <div class="voucher-title">NOTA DE PEDIDO / VENTA</div>
+                            <div class="meta-line"><strong>Punto de Venta:</strong> <?php echo esc_html($pto_vta); ?> &nbsp;&nbsp;&nbsp; <strong>Comp Nro:</strong> <?php echo esc_html($cbte_nro); ?></div>
+                            <div class="meta-line"><strong>Fecha de Emisión:</strong> <?php echo esc_html($date); ?></div>
+                            <?php if (!empty($company['iibb'])): ?>
+                                <div class="meta-line"><strong>Ingresos Brutos:</strong> <?php echo esc_html($company['iibb']); ?></div>
+                            <?php endif; ?>
+                            <?php if (!empty($company['activity_init'])): ?>
+                                <div class="meta-line"><strong>Fecha de Inicio de Actividades:</strong> <?php echo esc_html(date('d/m/Y', strtotime($company['activity_init']))); ?></div>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
 
-// Pie informativo
-$pdf->line(20, 765, 575, 765);
-$pdf->text(30, 785, 'Comprobante emitido a efectos informativos y de control comercial.', 8, false);
-$pdf->text(30, 796, 'No reemplaza a la factura fiscal emitida ante ARCA / AFIP.', 7, false);
+        <!-- DATOS DEL CLIENTE -->
+        <tr>
+            <td colspan="2" style="padding: 0;">
+                <table class="client-table">
+                    <tr>
+                        <td class="client-col">
+                            <div class="meta-line"><strong>Razón Social / Cliente:</strong> <?php echo esc_html($cliente_nombre); ?></div>
+                            <div class="meta-line"><strong>Documento / DNI:</strong> <?php echo esc_html($clean_doc); ?></div>
+                            <div class="meta-line"><strong>Condición frente al IVA:</strong> Consumidor Final</div>
+                            <div class="meta-line"><strong>Condición de Venta:</strong> <?php echo esc_html($order->get_payment_method_title() ?: 'Contado'); ?></div>
+                        </td>
+                        <td class="client-col">
+                            <div class="meta-line"><strong>Domicilio:</strong> <?php echo esc_html($customer_address); ?></div>
+                            <div class="meta-line"><strong>Teléfono:</strong> <?php echo esc_html($telefono); ?></div>
+                            <div class="meta-line"><strong>Email:</strong> <?php echo esc_html($email); ?></div>
+                            <div class="meta-line"><strong>Pedido WooCommerce:</strong> #<?php echo esc_html($order->get_id()); ?></div>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+
+        <!-- TABLA DE PRODUCTOS (LLENA EL ESPACIO HASTA EL PIE) -->
+        <tr class="content-row">
+            <td colspan="2" style="padding: 0; vertical-align: top;">
+                <table class="items-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 48%;">Descripción del Producto</th>
+                            <th class="text-center" style="width: 12%;">Cantidad</th>
+                            <th class="text-center" style="width: 12%;">U.M.</th>
+                            <th class="text-right" style="width: 14%;">Precio Unit.</th>
+                            <th class="text-right" style="width: 14%;">Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php 
+                        foreach ($order->get_items() as $item): 
+                            $qty = (float) $item->get_quantity();
+                            $subtotal_line = (float) $order->get_item_subtotal($item);
+                            $price_unit = $qty > 0 ? ($subtotal_line / $qty) : 0;
+                        ?>
+                        <tr>
+                            <td><strong><?php echo esc_html($item->get_name()); ?></strong></td>
+                            <td class="text-center"><?php echo number_format($qty, 2, ',', '.'); ?></td>
+                            <td class="text-center">unidades</td>
+                            <td class="text-right">$<?php echo number_format($price_unit, 2, ',', '.'); ?></td>
+                            <td class="text-right">$<?php echo number_format($subtotal_line, 2, ',', '.'); ?></td>
+                        </tr>
+                        <?php endforeach; ?>
+
+                        <?php if ($discount_total > 0): ?>
+                        <tr>
+                            <td><strong>Descuento Comercial</strong></td>
+                            <td class="text-center">1,00</td>
+                            <td class="text-center">unidades</td>
+                            <td class="text-right">-$<?php echo number_format($discount_total, 2, ',', '.'); ?></td>
+                            <td class="text-right">-$<?php echo number_format($discount_total, 2, ',', '.'); ?></td>
+                        </tr>
+                        <?php endif; ?>
+
+                        <?php foreach ($order->get_fees() as $fee): ?>
+                        <tr>
+                            <td><strong><?php echo esc_html($fee->get_name()); ?></strong></td>
+                            <td class="text-center">1,00</td>
+                            <td class="text-center">servicios</td>
+                            <td class="text-right">$<?php echo number_format((float) $fee->get_total(), 2, ',', '.'); ?></td>
+                            <td class="text-right">$<?php echo number_format((float) $fee->get_total(), 2, ',', '.'); ?></td>
+                        </tr>
+                        <?php endforeach; ?>
+
+                        <?php if ($shipping_total > 0): ?>
+                        <tr>
+                            <td><strong>Envío (<?php echo esc_html($order->get_shipping_method() ?: 'Logística'); ?>)</strong></td>
+                            <td class="text-center">1,00</td>
+                            <td class="text-center">servicios</td>
+                            <td class="text-right">$<?php echo number_format($shipping_total, 2, ',', '.'); ?></td>
+                            <td class="text-right">$<?php echo number_format($shipping_total, 2, ',', '.'); ?></td>
+                        </tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+
+                <?php if ($order->get_customer_note()): ?>
+                <div class="section-notes">
+                    <strong>Observaciones del Cliente:</strong> <?php echo esc_html($order->get_customer_note()); ?>
+                </div>
+                <?php endif; ?>
+            </td>
+        </tr>
+
+        <!-- TOTALES Y PIE AL FONDO -->
+        <tr class="footer-row">
+            <td colspan="2" style="padding: 0;">
+                <table class="totals-table">
+                    <tr>
+                        <td class="totals-col-left">
+                            <strong>Aviso Informativo:</strong><br>
+                            Este comprobante es un documento interno emitido a efectos de control y preparación del pedido.<br>
+                            No reemplaza a la factura fiscal electrónica emitida ante ARCA / AFIP.
+                        </td>
+                        <td class="totals-col-right">
+                            <table class="subtotals-table">
+                                <tr>
+                                    <td><strong>Subtotal:</strong></td>
+                                    <td class="text-right">$<?php echo number_format($subtotal, 2, ',', '.'); ?></td>
+                                </tr>
+                                <?php if ($discount_total > 0): ?>
+                                <tr>
+                                    <td><strong>Descuento:</strong></td>
+                                    <td class="text-right">-$<?php echo number_format($discount_total, 2, ',', '.'); ?></td>
+                                </tr>
+                                <?php endif; ?>
+                                <tr class="total-highlight">
+                                    <td style="padding-top: 6px; padding-bottom: 6px;"><strong>TOTAL:</strong></td>
+                                    <td class="text-right" style="padding-top: 6px; padding-bottom: 6px;"><strong>$<?php echo number_format($total, 2, ',', '.'); ?></strong></td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</div>

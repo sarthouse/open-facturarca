@@ -3,6 +3,7 @@ namespace WcArca\Invoices;
 
 use WcArca\Services\TaxResolver;
 use WcArca\Services\CompanyManager;
+use WcArca\Services\DompdfRenderer;
 
 defined('ABSPATH') || exit;
 
@@ -231,102 +232,16 @@ class PdfHandler {
             $template_file = OPEN_FACTURARCA_DIR . 'templates/invoice-b.php';
         }
 
-        $pdf = new \WcArca\Services\SimplePdf();
+        $full_html = '';
 
         foreach ($copies as $copy_name) {
-            $pdf->add_page();
+            ob_start();
             if (file_exists($template_file)) {
                 include $template_file;
             }
+            $full_html .= ob_get_clean();
         }
 
-        return $pdf->output();
-    }
-
-        return $pdf->output();
-    }
-
-    public static function render_single_invoice_html($order) {
-        $copies_mode = get_option('wc_arca_invoice_copies', 'original');
-        $copies = ['ORIGINAL'];
-        if ($copies_mode === 'duplicado') {
-            $copies = ['ORIGINAL', 'DUPLICADO'];
-        } elseif ($copies_mode === 'triplicado') {
-            $copies = ['ORIGINAL', 'DUPLICADO', 'TRIPLICADO'];
-        }
-
-        $cae       = (string) $order->get_meta('_arca_cae');
-        $cae_vto   = (string) $order->get_meta('_arca_cae_vto');
-        $pto_vta   = sprintf('%04d', (int) $order->get_meta('_arca_pto_vta'));
-        $cbte_nro  = sprintf('%08d', (int) $order->get_meta('_arca_cbte_nro'));
-        $cbte_tipo = (int) $order->get_meta('_arca_cbte_tipo');
-        $cbte_fch  = (string) $order->get_meta('_arca_cbte_fch');
-
-        // Formatos de fecha
-        $cbte_fch_fmt = !empty($cbte_fch) ? date('d/m/Y', strtotime($cbte_fch)) : date('d/m/Y');
-        $cae_vto_fmt  = !empty($cae_vto) ? date('d/m/Y', strtotime($cae_vto)) : '-';
-
-        // Obtener datos de la empresa emisora que facturó esta orden
-        $company_id    = $order->get_meta('_arca_company_id');
-        $company       = $company_id ? CompanyManager::get_company($company_id) : CompanyManager::get_default_company();
-        $cuit_emisor   = $order->get_meta('_arca_company_cuit') ?: ($company['cuit'] ?? '');
-        $razon_social  = $company['name'] ?? get_bloginfo('name');
-        $nombre_emisor = !empty($company['trade_name']) ? $company['trade_name'] : $razon_social;
-        $cond_emisor   = $company['tax_condition'] ?? 'monotributo';
-
-        $voucher_title = TaxResolver::get_cbte_label($cbte_tipo);
-        $letra = ($cbte_tipo === 1 || $cbte_tipo === 2 || $cbte_tipo === 3) ? 'A' : (($cbte_tipo === 6 || $cbte_tipo === 7 || $cbte_tipo === 8) ? 'B' : 'C');
-
-        // Documento y domicilio del cliente
-        $clean_doc = $order->get_meta('_billing_dni') ?: ($order->get_meta('_billing_doc_number') ?: ($order->get_meta('billing_dni') ?: '-'));
-        $customer_address_parts = array_filter([
-            $order->get_billing_address_1(),
-            $order->get_billing_city(),
-            $order->get_billing_state(),
-            $order->get_billing_postcode()
-        ]);
-        $customer_address = !empty($customer_address_parts) ? implode(', ', $customer_address_parts) : '-';
-
-        // Cálculos de totales e importes
-        $total = (float) $order->get_total();
-        $total_tax = (float) $order->get_total_tax();
-        $neto = $total_tax > 0 ? round($total - $total_tax, 2) : round($total / 1.21, 2);
-        $iva_total = round($total - $neto, 2);
-        $iva_contenido = $iva_total;
-
-        // Generar URL y QR ARCA oficial
-        $fch_qr = strlen($cbte_fch) === 8 ? substr($cbte_fch, 0, 4) . '-' . substr($cbte_fch, 4, 2) . '-' . substr($cbte_fch, 6, 2) : date('Y-m-d');
-        $qr_data = [
-            'ver'       => 1,
-            'fecha'     => $fch_qr,
-            'cuit'      => (float) $cuit_emisor,
-            'ptoVta'    => (int) $pto_vta,
-            'tipoCmp'   => $cbte_tipo,
-            'nroCmp'    => (int) $cbte_nro,
-            'importe'   => $total,
-            'moneda'    => 'PES',
-            'ctz'       => 1,
-            'tipoDocRec'=> (int) ($order->get_meta('_billing_doc_type') ?: 96),
-            'nroDocRec' => (float) (preg_replace('/[^0-9]/', '', $clean_doc) ?: 0),
-            'tipoCodAut'=> 'E',
-            'codAut'    => (float) $cae,
-        ];
-        $qr_encoded = base64_encode(json_encode($qr_data));
-        $qr_url = "https://www.afip.gob.ar/fe/qr/?p=" . $qr_encoded;
-        $qr_image_url = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" . urlencode($qr_url);
-
-        // Selección de plantilla según letra
-        $template_file = OPEN_FACTURARCA_DIR . 'templates/invoice-c.php';
-        if ($letra === 'A') {
-            $template_file = OPEN_FACTURARCA_DIR . 'templates/invoice-a.php';
-        } elseif ($letra === 'B') {
-            $template_file = OPEN_FACTURARCA_DIR . 'templates/invoice-b.php';
-        }
-
-        if (file_exists($template_file)) {
-            include $template_file;
-        } else {
-            wp_die(__('Plantilla de factura no encontrada.', 'open-facturarca'), 500);
-        }
+        return DompdfRenderer::render_html_to_pdf($full_html);
     }
 }

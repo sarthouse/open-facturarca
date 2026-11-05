@@ -1,128 +1,162 @@
 <?php
 /**
- * Plantilla de Renderizado PDF para Remito de Entrega
- * Letra R - COD. 91
+ * Plantilla HTML de Remito para Dompdf
+ * Letra X - COD. 099
  *
  * Variables esperadas:
- * @var \WcArca\Services\SimplePdf $pdf
- * @var string $copy_name
- * @var array $data
+ * @var WC_Order $order
+ * @var array    $company
+ * @var string   $pto_vta
+ * @var string   $cbte_nro
+ * @var string   $date
+ * @var string   $clean_doc
+ * @var string   $customer_address
+ * @var string   $copy_name
  */
 defined('ABSPATH') || exit;
 
-$order         = $data['order'];
-$company       = $data['company'];
-$pto_vta       = $data['pto_vta'];
-$cbte_nro      = $data['cbte_nro'];
-$date          = $data['date'];
-$clean_doc     = $data['clean_doc'];
-$customer_address = $data['customer_address'];
-$emisor_name   = !empty($company['trade_name']) ? $company['trade_name'] : ($company['name'] ?? get_bloginfo('name'));
-$razon_social  = $company['name'] ?? '';
-$emisor_cuit   = $company['cuit'] ?? '';
+$emisor_name  = !empty($company['trade_name']) ? $company['trade_name'] : ($company['name'] ?? get_bloginfo('name'));
+$razon_social = $company['name'] ?? '';
+$emisor_cuit  = $company['cuit'] ?? '';
+$logo_url     = $company['logo_url'] ?? '';
 
-// Marco exterior
-$pdf->rect(20, 20, 555, 800);
-
-// Letra Badge Central R (COD. 91)
-$pdf->rect(275, 20, 45, 40, true, true, [245, 245, 245], [0, 0, 0]);
-$pdf->text(291, 46, 'R', 20, true);
-$pdf->text(280, 56, 'COD. 91', 8, true);
-
-// Leyenda obligatoria debajo de la letra
-$pdf->text(225, 70, 'DOCUMENTO NO VALIDO', 8, true);
-$pdf->text(236, 80, 'COMO FACTURA', 8, true);
-
-// Indicador de Copia
-$pdf->text(515, 30, $copy_name, 8, true);
-
-// Emisor (Izquierda)
-$logo_url = $company['logo_url'] ?? '';
-$y_emisor = 34;
-
-if (!empty($logo_url)) {
-    $has_logo = $pdf->image($logo_url, 30, 24, 80, 28);
-    if ($has_logo) {
-        $y_emisor = 58;
-    } else {
-        $pdf->text(30, $y_emisor, substr($emisor_name, 0, 26), 12, true);
-        $y_emisor += 13;
-    }
-} else {
-    $pdf->text(30, $y_emisor, substr($emisor_name, 0, 26), 12, true);
-    $y_emisor += 13;
-}
-
-if (!empty($razon_social) && $emisor_name !== $razon_social && empty($logo_url)) {
-    $pdf->text(30, $y_emisor, 'Razon Social: ' . substr($razon_social, 0, 28), 8, false);
-    $y_emisor += 10;
-}
-
-if (!empty($emisor_cuit)) {
-    $pdf->text(30, $y_emisor, 'CUIT: ' . $emisor_cuit, 8, false);
-    $y_emisor += 10;
-}
-if (!empty($company['address'])) {
-    $dir = trim($company['address'] . (!empty($company['province']) ? ', ' . $company['province'] : ''));
-    $pdf->text(30, $y_emisor, 'Domicilio: ' . substr($dir, 0, 36), 8, false);
-    $y_emisor += 10;
-}
-if (!empty($company['phone'])) {
-    $pdf->text(30, $y_emisor, 'Telefono: ' . substr($company['phone'], 0, 25), 8, false);
-}
-
-// Comprobante (Derecha)
-$pdf->text(340, 36, 'REMITO DE ENTREGA', 12, true);
-$pdf->text(340, 50, sprintf('Pto. Vta: %s   Comp: %s', $pto_vta, $cbte_nro), 8, true);
-$pdf->text(340, 62, 'Fecha de Emision: ' . $date, 8, false);
-
-// Separador
-$pdf->line(20, 95, 575, 95);
-
-// Cliente / Destinatario (Razón Social estandarizado)
 $destinatario = $order->get_formatted_shipping_full_name() ?: $order->get_formatted_billing_full_name();
-$pdf->text(30, 108, 'Razon Social: ' . substr($destinatario, 0, 35), 8, true);
-$pdf->text(30, 119, 'Documento: ' . $clean_doc, 8, false);
-$pdf->text(30, 130, 'Direccion de Entrega: ' . substr($customer_address, 0, 48), 8, false);
-$pdf->text(30, 141, 'Telefono de Contacto: ' . substr($order->get_billing_phone() ?: '-', 0, 20), 8, false);
+$telefono     = $order->get_billing_phone() ?: '-';
+$shipping_method = $order->get_shipping_method() ?: 'Coordinar entrega';
+?>
+<div class="voucher-page">
+    <table class="border-box-table">
+        <!-- ENCABEZADO -->
+        <tr>
+            <td colspan="2" style="padding: 0;">
+                <table class="header-table">
+                    <tr>
+                        <!-- Columna Izquierda: Emisor -->
+                        <td class="header-col-left">
+                            <?php if (!empty($logo_url)): ?>
+                                <img src="<?php echo esc_url($logo_url); ?>" alt="Logo" class="logo">
+                            <?php endif; ?>
+                            <div class="brand-title"><?php echo esc_html($emisor_name); ?></div>
+                            <?php if (!empty($razon_social) && $emisor_name !== $razon_social): ?>
+                                <div class="meta-line"><strong>Razón Social:</strong> <?php echo esc_html($razon_social); ?></div>
+                            <?php endif; ?>
+                            <?php if (!empty($emisor_cuit)): ?>
+                                <div class="meta-line"><strong>CUIT:</strong> <?php echo esc_html($emisor_cuit); ?></div>
+                            <?php endif; ?>
+                            <?php if (!empty($company['address'])): 
+                                $dir_full = $company['address'] . (!empty($company['province']) ? ', ' . $company['province'] : '') . (!empty($company['postcode']) ? ' (CP ' . $company['postcode'] . ')' : '');
+                            ?>
+                                <div class="meta-line"><strong>Domicilio:</strong> <?php echo esc_html($dir_full); ?></div>
+                            <?php endif; ?>
+                            <?php if (!empty($company['phone'])): ?>
+                                <div class="meta-line"><strong>Teléfono:</strong> <?php echo esc_html($company['phone']); ?></div>
+                            <?php endif; ?>
+                        </td>
 
-$pdf->text(340, 108, 'Pedido WooCommerce: #' . $order->get_id(), 8, true);
-$pdf->text(340, 119, 'Metodo de Envio: ' . substr($order->get_shipping_method() ?: 'Estandar', 0, 25), 8, false);
-$pdf->text(340, 130, 'Metodo de Pago: ' . substr($order->get_payment_method_title() ?: '-', 0, 25), 8, false);
+                        <!-- Columna Central: Letra Badge -->
+                        <td class="header-col-center">
+                            <span class="letter-badge">X</span>
+                            <span class="letter-code">COD. 099</span>
+                            <div class="non-fiscal-warning">
+                                Documento no válido como factura
+                            </div>
+                        </td>
 
-// Encabezado de Tabla de Ítems (Remito enfocado en cantidades, bultos y SKU)
-$pdf->line(20, 154, 575, 154);
-$pdf->rect(20, 154, 555, 18, false, true, [240, 240, 240], [0, 0, 0]);
-$pdf->text(30, 166, 'Item', 8, true);
-$pdf->text(70, 166, 'Descripcion del Producto', 8, true);
-$pdf->text(380, 166, 'SKU', 8, true);
-$pdf->text(480, 166, 'Cant. / Unid.', 8, true);
+                        <!-- Columna Derecha: Datos del Remito -->
+                        <td class="header-col-right">
+                            <div class="copy-type"><?php echo esc_html($copy_name); ?></div>
+                            <div class="voucher-title">REMITO</div>
+                            <div class="meta-line"><strong>Punto de Venta:</strong> <?php echo esc_html($pto_vta); ?> &nbsp;&nbsp;&nbsp; <strong>Remito Nro:</strong> <?php echo esc_html($cbte_nro); ?></div>
+                            <div class="meta-line"><strong>Fecha de Emisión:</strong> <?php echo esc_html($date); ?></div>
+                            <?php if (!empty($company['iibb'])): ?>
+                                <div class="meta-line"><strong>Ingresos Brutos:</strong> <?php echo esc_html($company['iibb']); ?></div>
+                            <?php endif; ?>
+                            <?php if (!empty($company['activity_init'])): ?>
+                                <div class="meta-line"><strong>Fecha de Inicio de Actividades:</strong> <?php echo esc_html(date('d/m/Y', strtotime($company['activity_init']))); ?></div>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
 
-$y = 186;
-$item_num = 1;
-foreach ($order->get_items() as $item) {
-    if ($y > 670) break;
-    $product = $item->get_product();
-    $sku = $product ? $product->get_sku() : '-';
-    $qty = (float) $item->get_quantity();
+        <!-- DATOS DE DESTINATARIO Y ENVÍO -->
+        <tr>
+            <td colspan="2" style="padding: 0;">
+                <table class="client-table">
+                    <tr>
+                        <td class="client-col">
+                            <div class="meta-line"><strong>Razón Social / Destinatario:</strong> <?php echo esc_html($destinatario); ?></div>
+                            <div class="meta-line"><strong>Documento / DNI:</strong> <?php echo esc_html($clean_doc); ?></div>
+                            <div class="meta-line"><strong>Dirección de Entrega:</strong> <?php echo esc_html($customer_address); ?></div>
+                            <div class="meta-line"><strong>Teléfono de Contacto:</strong> <?php echo esc_html($telefono); ?></div>
+                        </td>
+                        <td class="client-col">
+                            <div class="meta-line"><strong>Pedido WooCommerce:</strong> #<?php echo esc_html($order->get_id()); ?></div>
+                            <div class="meta-line"><strong>Método de Envío:</strong> <?php echo esc_html($shipping_method); ?></div>
+                            <div class="meta-line"><strong>Método de Pago:</strong> <?php echo esc_html($order->get_payment_method_title() ?: '-'); ?></div>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
 
-    $pdf->text(30, $y, sprintf('%02d', $item_num++), 8, false);
-    $pdf->text(70, $y, substr($item->get_name(), 0, 48), 8, true);
-    $pdf->text(380, $y, substr($sku ?: '-', 0, 15), 8, false);
-    $pdf->text(480, $y, number_format($qty, 2, ',', '.') . ' un.', 8, true);
-    $pdf->line(20, $y + 4, 575, $y + 4, 0.5);
-    $y += 18;
-}
+        <!-- TABLA DE PRODUCTOS (LLENA EL ESPACIO HASTA EL PIE) -->
+        <tr class="content-row">
+            <td colspan="2" style="padding: 0; vertical-align: top;">
+                <table class="items-table">
+                    <thead>
+                        <tr>
+                            <th class="text-center" style="width: 8%;">Ítem</th>
+                            <th style="width: 54%;">Descripción del Producto</th>
+                            <th style="width: 22%;">SKU / Código</th>
+                            <th class="text-center" style="width: 16%;">Cantidad</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php 
+                        $num = 1;
+                        foreach ($order->get_items() as $item): 
+                            $product = $item->get_product();
+                            $sku = $product ? $product->get_sku() : '-';
+                            $qty = (float) $item->get_quantity();
+                        ?>
+                        <tr>
+                            <td class="text-center"><?php echo sprintf('%02d', $num++); ?></td>
+                            <td><strong><?php echo esc_html($item->get_name()); ?></strong></td>
+                            <td><?php echo esc_html($sku ?: '-'); ?></td>
+                            <td class="text-center"><strong><?php echo number_format($qty, 2, ',', '.') . ' un.'; ?></strong></td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
 
-// Observaciones / Notas
-if ($order->get_customer_note() && $y <= 690) {
-    $pdf->text(30, $y + 6, 'Obs: ' . substr($order->get_customer_note(), 0, 80), 7, false);
-}
+                <?php if ($order->get_customer_note()): ?>
+                <div class="section-notes">
+                    <strong>Observaciones de Entrega:</strong> <?php echo esc_html($order->get_customer_note()); ?>
+                </div>
+                <?php endif; ?>
+            </td>
+        </tr>
 
-// Cuadro de Firmas de Recepción
-$pdf->line(20, 715, 575, 715);
-$pdf->line(50, 780, 240, 780);
-$pdf->text(70, 792, 'Despachado / Embalado por', 8, false);
-
-$pdf->line(330, 780, 540, 780);
-$pdf->text(345, 792, 'Firma, Aclaracion y DNI de recepcion', 8, false);
+        <!-- FIRMAS DE RECEPCIÓN Y CONFORMIDAD AL FONDO -->
+        <tr class="footer-row">
+            <td colspan="2" style="padding: 0;">
+                <table class="signatures-table">
+                    <tr>
+                        <td class="signature-cell">
+                            <div class="signature-line"></div>
+                            <div class="signature-label">Despachado / Embalado por</div>
+                            <div class="signature-sub">Control de mercadería en origen</div>
+                        </td>
+                        <td class="signature-cell">
+                            <div class="signature-line"></div>
+                            <div class="signature-label">Recibí Conforme</div>
+                            <div class="signature-sub">Firma, Aclaración y DNI de recepción</div>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</div>
