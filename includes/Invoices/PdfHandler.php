@@ -229,6 +229,22 @@ class PdfHandler {
         $cond_cliente = TaxResolver::get_tax_condition_label($raw_client_tax_cond);
         $is_testing = ($company['environment'] ?? 'testing') === 'testing';
 
+        // Formatear Fecha de Emisión (YYYYMMDD -> DD/MM/YYYY)
+        $cbte_fch_fmt = '-';
+        if (!empty($cbte_fch)) {
+            $fch_clean = preg_replace('/[^0-9]/', '', (string)$cbte_fch);
+            if (strlen($fch_clean) === 8) {
+                $cbte_fch_fmt = substr($fch_clean, 6, 2) . '/' . substr($fch_clean, 4, 2) . '/' . substr($fch_clean, 0, 4);
+            } else {
+                $cbte_fch_fmt = date('d/m/Y', strtotime($cbte_fch));
+            }
+        } elseif ($order->get_date_created()) {
+            $cbte_fch_fmt = $order->get_date_created()->date('d/m/Y');
+        } else {
+            $cbte_fch_fmt = date('d/m/Y');
+        }
+
+        // Formatear Fecha de Vencimiento de CAE (YYYYMMDD -> DD/MM/YYYY)
         $cae_vto_fmt = '-';
         if (!empty($cae_vto)) {
             $cae_vto_clean = preg_replace('/[^0-9]/', '', (string)$cae_vto);
@@ -247,7 +263,7 @@ class PdfHandler {
             'pto_vta'          => $pto_vta,
             'cbte_nro'         => $cbte_nro,
             'cbte_tipo'        => $cbte_tipo,
-            'cbte_fch_fmt'     => !empty($cbte_fch) ? date('d/m/Y', strtotime($cbte_fch)) : date('d/m/Y'),
+            'cbte_fch_fmt'     => $cbte_fch_fmt,
             'voucher_title'    => $voucher_title,
             'letra'            => $letra,
             'cuit_emisor'      => $cuit_emisor,
@@ -407,6 +423,32 @@ class PdfHandler {
         $iva_contenido = round($amount - $neto, 2);
         $is_testing = ($company['environment'] ?? 'testing') === 'testing';
 
+        // Formatear Fecha de Emisión de la Nota de Crédito (YYYYMMDD -> DD/MM/YYYY)
+        $nc_fch_fmt = '-';
+        if (!empty($cbte_fch)) {
+            $fch_clean = preg_replace('/[^0-9]/', '', (string)$cbte_fch);
+            if (strlen($fch_clean) === 8) {
+                $nc_fch_fmt = substr($fch_clean, 6, 2) . '/' . substr($fch_clean, 4, 2) . '/' . substr($fch_clean, 0, 4);
+            } else {
+                $nc_fch_fmt = date('d/m/Y', strtotime($cbte_fch));
+            }
+        } elseif ($order->get_date_created()) {
+            $nc_fch_fmt = $order->get_date_created()->date('d/m/Y');
+        } else {
+            $nc_fch_fmt = date('d/m/Y');
+        }
+
+        // Formatear Fecha de Vencimiento de CAE de la Nota de Crédito (YYYYMMDD -> DD/MM/YYYY)
+        $nc_cae_vto_fmt = '-';
+        if (!empty($cae_vto)) {
+            $vto_clean = preg_replace('/[^0-9]/', '', (string)$cae_vto);
+            if (strlen($vto_clean) === 8) {
+                $nc_cae_vto_fmt = substr($vto_clean, 6, 2) . '/' . substr($vto_clean, 4, 2) . '/' . substr($vto_clean, 0, 4);
+            } else {
+                $nc_cae_vto_fmt = date('d/m/Y', strtotime($cae_vto));
+            }
+        }
+
         $data = [
             'order'            => $order,
             'company'          => $company,
@@ -416,7 +458,7 @@ class PdfHandler {
             'pto_vta'          => $pto_vta,
             'cbte_nro'         => $cbte_nro,
             'cbte_tipo'        => $cbte_tipo,
-            'cbte_fch_fmt'     => !empty($cbte_fch) ? (strlen($cbte_fch) === 8 ? substr($cbte_fch, 6, 2) . '/' . substr($cbte_fch, 4, 2) . '/' . substr($cbte_fch, 0, 4) : date('d/m/Y', strtotime($cbte_fch))) : date('d/m/Y'),
+            'cbte_fch_fmt'     => $nc_fch_fmt,
             'voucher_title'    => $voucher_title,
             'letra'            => $letra,
             'cuit_emisor'      => $cuit_emisor,
@@ -431,7 +473,7 @@ class PdfHandler {
             'localidad'        => $localidad,
             'provincia'        => $provincia,
             'cae'              => $cae,
-            'cae_vto_fmt'      => !empty($cae_vto) ? (strlen($cae_vto) === 8 ? substr($cae_vto, 6, 2) . '/' . substr($cae_vto, 4, 2) . '/' . substr($cae_vto, 0, 4) : date('d/m/Y', strtotime($cae_vto))) : '-',
+            'cae_vto_fmt'      => $nc_cae_vto_fmt,
             'amount'           => $amount,
             'neto'             => $neto,
             'iva_contenido'    => $iva_contenido,
