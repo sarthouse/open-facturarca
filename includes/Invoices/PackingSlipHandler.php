@@ -71,7 +71,7 @@ class PackingSlipHandler {
 
         $company_id   = $order->get_meta('_arca_company_id');
         $company      = $company_id ? CompanyManager::get_company($company_id) : CompanyManager::get_default_company();
-        $pto_vta      = sprintf('%04d', (int) ($order->get_meta('_arca_pto_vta') ?: ($company['pto_vta'] ?? 1)));
+        $pto_vta      = sprintf('%05d', (int) ($order->get_meta('_arca_pto_vta') ?: ($company['pto_vta'] ?? 1)));
         $cbte_nro     = sprintf('%08d', $order->get_id());
         $date         = $order->get_date_created() ? $order->get_date_created()->date('d/m/Y') : date('d/m/Y');
 

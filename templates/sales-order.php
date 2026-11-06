@@ -135,6 +135,45 @@ $shipping_total = (float) $order->get_shipping_total() + (float) $order->get_shi
                     <td class="text-right">$<?php echo number_format($subtotal_line, 2, ',', '.'); ?></td>
                 </tr>
                 <?php endforeach; ?>
+
+                <?php foreach ($order->get_fees() as $fee): 
+                    $fee_line = (float) $fee->get_total() + (float) $fee->get_total_tax();
+                ?>
+                <tr>
+                    <td><strong><?php echo esc_html($fee->get_name()); ?></strong></td>
+                    <td class="text-center">1,00</td>
+                    <td class="text-center">unidades</td>
+                    <td class="text-right">$<?php echo number_format($fee_line, 2, ',', '.'); ?></td>
+                    <td class="text-right">$<?php echo number_format($fee_line, 2, ',', '.'); ?></td>
+                </tr>
+                <?php endforeach; ?>
+
+                <?php if ($shipping_total > 0): 
+                    $ship_method = $order->get_shipping_method() ?: 'Servicio de Logística / Envío';
+                ?>
+                <tr>
+                    <td><strong>Envío: <?php echo esc_html($ship_method); ?></strong></td>
+                    <td class="text-center">1,00</td>
+                    <td class="text-center">unidades</td>
+                    <td class="text-right">$<?php echo number_format($shipping_total, 2, ',', '.'); ?></td>
+                    <td class="text-right">$<?php echo number_format($shipping_total, 2, ',', '.'); ?></td>
+                </tr>
+                <?php endif; ?>
+
+                <?php 
+                // Descuentos comerciales / cupones reflejados como línea en la grilla principal
+                if ($discount_total > 0): 
+                    $coupons = $order->get_coupon_codes();
+                    $coupon_label = !empty($coupons) ? 'Descuento (' . implode(', ', $coupons) . ')' : 'Descuento comercial';
+                ?>
+                <tr>
+                    <td><strong style="color: #c62828;"><?php echo esc_html($coupon_label); ?></strong></td>
+                    <td class="text-center">1,00</td>
+                    <td class="text-center">unidades</td>
+                    <td class="text-right" style="color: #c62828;">-$<?php echo number_format($discount_total, 2, ',', '.'); ?></td>
+                    <td class="text-right" style="color: #c62828;">-$<?php echo number_format($discount_total, 2, ',', '.'); ?></td>
+                </tr>
+                <?php endif; ?>
             </tbody>
         </table>
         <div class="footer-pinned">
@@ -154,39 +193,10 @@ $shipping_total = (float) $order->get_shipping_total() + (float) $order->get_shi
                     </td>
                     <td class="totals-col-right">
                         <table class="subtotals-table">
-                            <?php
-                            $items_subtotal = 0;
-                            foreach ($order->get_items() as $item) {
-                                $items_subtotal += (float) $item->get_subtotal() + (float) $item->get_subtotal_tax();
-                            }
-                            ?>
                             <tr>
                                 <td><strong>Subtotal:</strong></td>
-                                <td class="text-right">$<?php echo number_format($items_subtotal, 2, ',', '.'); ?></td>
+                                <td class="text-right">$<?php echo number_format($total, 2, ',', '.'); ?></td>
                             </tr>
-                            <?php if ($discount_total > 0): ?>
-                            <tr>
-                                <td><strong>(-) Descuento:</strong></td>
-                                <td class="text-right">-$<?php echo number_format($discount_total, 2, ',', '.'); ?></td>
-                            </tr>
-                            <?php endif; ?>
-                            <?php if ($shipping_total > 0): ?>
-                            <tr>
-                                <td><strong>(+) Envío:</strong></td>
-                                <td class="text-right">$<?php echo number_format($shipping_total, 2, ',', '.'); ?></td>
-                            </tr>
-                            <?php endif; ?>
-                            <?php 
-                            $fees_total = 0;
-                            foreach ($order->get_fees() as $fee) {
-                                $fees_total += (float) $fee->get_total() + (float) $fee->get_total_tax();
-                            }
-                            if ($fees_total > 0): ?>
-                            <tr>
-                                <td><strong>(+) Recargos / Servicios:</strong></td>
-                                <td class="text-right">$<?php echo number_format($fees_total, 2, ',', '.'); ?></td>
-                            </tr>
-                            <?php endif; ?>
                             <tr class="total-highlight">
                                 <td style="padding-top: 6px; padding-bottom: 6px;"><strong>TOTAL:</strong></td>
                                 <td class="text-right" style="padding-top: 6px; padding-bottom: 6px;"><strong>$<?php echo number_format($total, 2, ',', '.'); ?></strong></td>

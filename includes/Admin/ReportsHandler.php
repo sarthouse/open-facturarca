@@ -205,8 +205,8 @@ class ReportsHandler {
 
                 $cbte_tipo = (int)$order->get_meta('_arca_cbte_tipo');
                 $tipo_label = TaxResolver::get_cbte_label($cbte_tipo);
-                $pto_vta   = sprintf('%04d', $order->get_meta('_arca_pto_vta'));
-                $cbte_nro  = sprintf('%08d', $order->get_meta('_arca_cbte_nro'));
+                $pto_vta   = sprintf('%05d', (int) $order->get_meta('_arca_pto_vta'));
+                $cbte_nro  = sprintf('%08d', (int) $order->get_meta('_arca_cbte_nro'));
 
                 $doc_tipo  = $order->get_meta('_billing_doc_type') ?: '96';
                 $doc_nro   = $order->get_meta('_billing_dni') ?: ($order->get_meta('billing_dni') ?: '-');
@@ -255,8 +255,8 @@ class ReportsHandler {
 
                     $nc_tipo = (int)($nc['cbte_tipo'] ?? 0);
                     $nc_label = TaxResolver::get_cbte_label($nc_tipo);
-                    $nc_pto_vta = sprintf('%04d', $nc['pto_vta'] ?? 0);
-                    $nc_nro = sprintf('%08d', $nc['cbte_nro'] ?? 0);
+                    $nc_pto_vta = sprintf('%05d', (int) ($nc['pto_vta'] ?? 0));
+                    $nc_nro = sprintf('%08d', (int) ($nc['cbte_nro'] ?? 0));
 
                     $nc_total = (float)($nc['importe'] ?? 0);
                     $nc_neto  = ($cbte_tipo === 11 || $nc_tipo === 13) ? $nc_total : round($nc_total / 1.21, 2);

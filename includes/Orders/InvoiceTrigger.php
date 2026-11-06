@@ -140,7 +140,7 @@ class InvoiceTrigger {
             $order->update_meta_data('_arca_environment', $company['environment'] ?? 'testing');
 
             $cbte_label = TaxResolver::get_cbte_label($cbte_tipo);
-            $formatted_nro = sprintf('%04d-%08d', $result['pto_vta'], $result['cbte_nro']);
+            $formatted_nro = sprintf('%05d-%08d', (int) $result['pto_vta'], (int) $result['cbte_nro']);
 
             $order->add_order_note(
                 sprintf(
@@ -268,7 +268,7 @@ class InvoiceTrigger {
             $order->update_meta_data('_arca_credit_notes', $existing_ncs);
 
             $label = TaxResolver::get_cbte_label($cbte_tipo);
-            $formatted_nro = sprintf('%04d-%08d', $result['pto_vta'], $result['cbte_nro']);
+            $formatted_nro = sprintf('%05d-%08d', (int) $result['pto_vta'], (int) $result['cbte_nro']);
 
             $order->add_order_note(
                 sprintf(

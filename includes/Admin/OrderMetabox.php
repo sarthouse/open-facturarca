@@ -117,7 +117,7 @@ class OrderMetabox {
 
         if ($cae) {
             $label = TaxResolver::get_cbte_label($cbte_tipo);
-            $formatted_nro = sprintf('%04d-%08d', $pto_vta, $cbte_nro);
+            $formatted_nro = sprintf('%05d-%08d', (int) $pto_vta, (int) $cbte_nro);
             
             // Formatear Fecha de Emisión (YYYYMMDD -> DD/MM/YYYY)
             $cbte_fch_fmt = '-';
@@ -213,7 +213,7 @@ class OrderMetabox {
                     <ul style="margin: 0; padding-left: 0; list-style: none; font-size: 11.5px;">
                         <?php foreach ($credit_notes as $nc_idx => $nc): 
                             $nc_label = TaxResolver::get_cbte_label($nc['cbte_tipo']);
-                            $nc_nro = sprintf('%04d-%08d', $nc['pto_vta'], $nc['cbte_nro']);
+                            $nc_nro = sprintf('%05d-%08d', (int) $nc['pto_vta'], (int) $nc['cbte_nro']);
                             $nc_url = \WcArca\Invoices\PdfHandler::get_credit_note_download_url($order->get_id(), $nc_idx);
 
                             // Formatear Fecha de Emisión de NC

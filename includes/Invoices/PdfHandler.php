@@ -150,8 +150,8 @@ class PdfHandler {
 
         $cbte_tipo = (int)$order->get_meta('_arca_cbte_tipo');
         $letra = ($cbte_tipo === 1 || $cbte_tipo === 2 || $cbte_tipo === 3) ? 'A' : (($cbte_tipo === 6 || $cbte_tipo === 7 || $cbte_tipo === 8) ? 'B' : 'C');
-        $pto_vta = sprintf('%04d', $order->get_meta('_arca_pto_vta'));
-        $cbte_nro = sprintf('%08d', $order->get_meta('_arca_cbte_nro'));
+        $pto_vta = sprintf('%05d', (int) $order->get_meta('_arca_pto_vta'));
+        $cbte_nro = sprintf('%08d', (int) $order->get_meta('_arca_cbte_nro'));
         $filename = "Factura_{$letra}_{$pto_vta}-{$cbte_nro}.pdf";
 
         header('Content-Type: application/pdf');
@@ -175,7 +175,7 @@ class PdfHandler {
 
         $cae       = (string) $order->get_meta('_arca_cae');
         $cae_vto   = (string) $order->get_meta('_arca_cae_vto');
-        $pto_vta   = sprintf('%04d', (int) $order->get_meta('_arca_pto_vta'));
+        $pto_vta   = sprintf('%05d', (int) $order->get_meta('_arca_pto_vta'));
         $cbte_nro  = sprintf('%08d', (int) $order->get_meta('_arca_cbte_nro'));
         $cbte_tipo = (int) $order->get_meta('_arca_cbte_tipo');
         $cbte_fch  = (string) $order->get_meta('_arca_cbte_fch');
@@ -341,8 +341,8 @@ class PdfHandler {
 
         $cbte_tipo = (int)$nc['cbte_tipo'];
         $letra = ($cbte_tipo === 3) ? 'A' : (($cbte_tipo === 8) ? 'B' : 'C');
-        $pto_vta = sprintf('%04d', $nc['pto_vta']);
-        $cbte_nro = sprintf('%08d', $nc['cbte_nro']);
+        $pto_vta = sprintf('%05d', (int) $nc['pto_vta']);
+        $cbte_nro = sprintf('%08d', (int) $nc['cbte_nro']);
         $filename = "Nota_Credito_{$letra}_{$pto_vta}-{$cbte_nro}.pdf";
 
         header('Content-Type: application/pdf');
@@ -365,8 +365,8 @@ class PdfHandler {
         $company_id    = $order->get_meta('_arca_company_id');
         $company       = $company_id ? CompanyManager::get_company($company_id) : CompanyManager::get_default_company();
 
-        $pto_vta       = sprintf('%04d', $nc['pto_vta']);
-        $cbte_nro      = sprintf('%08d', $nc['cbte_nro']);
+        $pto_vta       = sprintf('%05d', (int) $nc['pto_vta']);
+        $cbte_nro      = sprintf('%08d', (int) $nc['cbte_nro']);
         $cbte_tipo     = (int) $nc['cbte_tipo'];
         $cbte_fch      = (string) ($nc['cbte_fch'] ?? '');
         $cae           = (string) ($nc['cae'] ?? '');
@@ -395,8 +395,8 @@ class PdfHandler {
         // Datos del comprobante original asociado
         $orig_cbte_tipo = (int) $order->get_meta('_arca_cbte_tipo');
         $asoc_tipo_label = TaxResolver::get_cbte_label($orig_cbte_tipo);
-        $asoc_pto_vta = sprintf('%04d', $order->get_meta('_arca_pto_vta'));
-        $asoc_cbte_nro = sprintf('%08d', $order->get_meta('_arca_cbte_nro'));
+        $asoc_pto_vta = sprintf('%05d', (int) $order->get_meta('_arca_pto_vta'));
+        $asoc_cbte_nro = sprintf('%08d', (int) $order->get_meta('_arca_cbte_nro'));
 
         // Generar QR de la Nota de Crédito
         $fch_qr = strlen($cbte_fch) === 8 ? substr($cbte_fch, 0, 4) . '-' . substr($cbte_fch, 4, 2) . '-' . substr($cbte_fch, 6, 2) : date('Y-m-d');
