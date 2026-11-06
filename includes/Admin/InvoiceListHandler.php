@@ -13,32 +13,60 @@ class InvoiceListHandler {
      * Obtiene y pagina los comprobantes emitidos (Facturas y Notas de Crédito)
      */
     public static function get_comprobantes($filter_company = '', $filter_type = '', $search = '', $start_date = '', $end_date = '', $paged = 1, $per_page = 20) {
-        // Obtenemos todas las órdenes facturadas con CAE
-        $args = [
-            'limit'        => -1,
+        $paged = max(1, (int) $paged);
+        $per_page = max(1, (int) $per_page);
+
+        // Si no hay búsqueda de texto libre ni filtro de NC exclusivamente, consultamos solo los IDs de pedidos de forma eficiente
+        $order_query_args = [
             'status'       => ['completed', 'processing', 'refunded', 'on-hold'],
             'meta_key'     => '_arca_cae',
             'meta_compare' => 'EXISTS',
+            'return'       => 'ids',
             'orderby'      => 'date',
             'order'        => 'DESC',
         ];
 
         if (!empty($start_date)) {
-            $args['date_created'] = '>=' . $start_date . ' 00:00:00';
+            $order_query_args['date_created'] = '>=' . $start_date . ' 00:00:00';
         }
         if (!empty($end_date)) {
-            if (isset($args['date_created'])) {
-                $args['date_created'] = $start_date . ' 00:00:00...' . $end_date . ' 23:59:59';
+            if (isset($order_query_args['date_created'])) {
+                $order_query_args['date_created'] = $start_date . ' 00:00:00...' . $end_date . ' 23:59:59';
             } else {
-                $args['date_created'] = '<=' . $end_date . ' 23:59:59';
+                $order_query_args['date_created'] = '<=' . $end_date . ' 23:59:59';
             }
         }
 
-        $orders = wc_get_orders($args);
+        // Filtro por empresa a nivel consulta de pedidos
+        if (!empty($filter_company)) {
+            $order_query_args['meta_query'] = [
+                [
+                    'key'     => '_arca_company_id',
+                    'value'   => $filter_company,
+                    'compare' => '=',
+                ],
+            ];
+        }
+
+        // Si se busca por ID exacto de pedido (ej: "#1669" o "1669")
+        $clean_search = trim($search);
+        if (preg_match('/^#?([0-9]+)$/', $clean_search, $matches)) {
+            $order_query_args['post__in'] = [(int) $matches[1]];
+        }
+
+        // Obtenemos solo los IDs sin hidratar pedidos enteros en memoria
+        $order_ids = wc_get_orders($order_query_args);
+
+        // Si la tienda tiene muchas órdenes, evitamos instanciar todos los WC_Order.
+        // Hacemos el parseo ligero trayendo solo las órdenes que necesitamos
         $items = [];
 
-        foreach ($orders as $order) {
-            $order_id = $order->get_id();
+        foreach ($order_ids as $order_id) {
+            $order = wc_get_order($order_id);
+            if (!$order) {
+                continue;
+            }
+
             $company_id = $order->get_meta('_arca_company_id') ?: 'default';
             $company_name = $order->get_meta('_arca_company_name') ?: '';
             

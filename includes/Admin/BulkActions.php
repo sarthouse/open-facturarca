@@ -4,6 +4,7 @@ namespace WcArca\Admin;
 use WcArca\Orders\InvoiceTrigger;
 use WcArca\Invoices\PdfHandler;
 use WcArca\Services\TaxResolver;
+use WcArca\Services\CompanyManager;
 
 defined('ABSPATH') || exit;
 
@@ -23,13 +24,40 @@ class BulkActions {
     }
 
     public static function register_bulk_actions($actions) {
-        $actions['arca_bulk_issue']  = __('Facturar en ARCA (Lote)', 'open-facturarca');
+        $companies = CompanyManager::get_companies();
+
+        if (count($companies) <= 1) {
+            $actions['arca_bulk_issue'] = __('Facturar en ARCA (Lote)', 'open-facturarca');
+        } else {
+            foreach ($companies as $id => $comp) {
+                $name = !empty($comp['name']) ? $comp['name'] : (!empty($comp['trade_name']) ? $comp['trade_name'] : $id);
+                $actions['arca_bulk_issue_' . $id] = sprintf(__('Facturar en ARCA: %s (Lote)', 'open-facturarca'), $name);
+            }
+        }
+
         $actions['arca_bulk_export'] = __('Exportar Facturas a ZIP (Lote)', 'open-facturarca');
         return $actions;
     }
 
     public static function handle_bulk_actions($redirect_to, $action, $order_ids) {
+        // Detectar si la acción es de facturación masiva (general o específica por empresa)
+        $is_bulk_issue = false;
+        $target_company_id = '';
+
         if ($action === 'arca_bulk_issue') {
+            $is_bulk_issue = true;
+            $target_company_id = ''; // Utiliza la empresa por defecto
+        } elseif (strpos($action, 'arca_bulk_issue_') === 0) {
+            $is_bulk_issue = true;
+            $target_company_id = substr($action, strlen('arca_bulk_issue_'));
+        }
+
+        if ($is_bulk_issue) {
+            // Aumentar tiempo de ejecución para lotes grandes
+            if (function_exists('set_time_limit')) {
+                @set_time_limit(300);
+            }
+
             $issued = 0;
             $skipped = 0;
             $errors = 0;
@@ -44,11 +72,16 @@ class BulkActions {
                     continue;
                 }
 
-                $res = InvoiceTrigger::process_order_invoicing($order_id);
+                $res = InvoiceTrigger::process_order_invoicing($order_id, $target_company_id);
                 if ($res['success']) {
                     $issued++;
                 } else {
                     $errors++;
+                }
+
+                // Liberar memoria periódicamente
+                if (function_exists('wp_cache_flush_runtime')) {
+                    wp_cache_flush_runtime();
                 }
             }
 
@@ -99,6 +132,14 @@ class BulkActions {
             wp_die(__('La extensión PHP ZipArchive no está habilitada en su servidor.', 'open-facturarca'));
         }
 
+        // Aumentar tiempo de ejecución y memoria para generación masiva de PDFs en ZIP
+        if (function_exists('set_time_limit')) {
+            @set_time_limit(300);
+        }
+        if (function_exists('wp_raise_memory_limit')) {
+            wp_raise_memory_limit('admin');
+        }
+
         $zip = new \ZipArchive();
         $zip_file = tempnam(sys_get_temp_dir(), 'arca_zip_');
 
@@ -129,6 +170,11 @@ class BulkActions {
 
             $zip->addFromString($filename, $pdf_content);
             $added_count++;
+
+            // Liberar memoria de Dompdf y WC_Order
+            if (function_exists('wp_cache_flush_runtime')) {
+                wp_cache_flush_runtime();
+            }
         }
 
         $zip->close();
