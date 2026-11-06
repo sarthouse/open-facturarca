@@ -227,10 +227,12 @@ class PdfHandler {
 
         $raw_client_tax_cond = $order->get_meta('_billing_tax_condition') ?: 'consumidor_final';
         $cond_cliente = TaxResolver::get_tax_condition_label($raw_client_tax_cond);
+        $is_testing = ($company['environment'] ?? 'testing') === 'testing';
 
         $data = [
             'order'            => $order,
             'company'          => $company,
+            'is_testing'       => $is_testing,
             'pto_vta'          => $pto_vta,
             'cbte_nro'         => $cbte_nro,
             'cbte_tipo'        => $cbte_tipo,
@@ -392,10 +394,12 @@ class PdfHandler {
 
         $neto = round($amount / 1.21, 2);
         $iva_contenido = round($amount - $neto, 2);
+        $is_testing = ($company['environment'] ?? 'testing') === 'testing';
 
         $data = [
             'order'            => $order,
             'company'          => $company,
+            'is_testing'       => $is_testing,
             'nc'               => $nc,
             'reason'           => !empty($nc['reason']) ? $nc['reason'] : 'Nota de Crédito por Anulación / Ajuste de Operación',
             'pto_vta'          => $pto_vta,

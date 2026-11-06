@@ -156,7 +156,11 @@ $iva_total = $amount - $neto;
                             <div><strong>CAE N°:</strong> <?php echo esc_html($cae ?: '-'); ?></div>
                             <div style="margin-top: 3px;"><strong>Fecha de Vto. de CAE:</strong> <?php echo esc_html($cae_vto_fmt); ?></div>
                             <div style="font-size: 8px; color: #666; margin-top: 4px;">
-                                Comprobante Autorizado por ARCA (Agencia de Recaudación y Control Aduanero). Escanee el código QR para validar la autenticidad fiscal.
+                                <?php if (!empty($is_testing)): ?>
+                                    <strong style="color: #c62828;">[ENTORNO DE HOMOLOGACIÓN / PRUEBAS - AFIP]</strong> Comprobante emitido a fines de prueba y desarrollo. No posee validez tributaria.
+                                <?php else: ?>
+                                    Comprobante Autorizado por ARCA (Agencia de Recaudación y Control Aduanero). Escanee el código QR para validar la autenticidad fiscal.
+                                <?php endif; ?>
                             </div>
                         </td>
                     </tr>

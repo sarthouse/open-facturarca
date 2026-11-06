@@ -137,6 +137,7 @@ class InvoiceTrigger {
             $order->update_meta_data('_arca_company_id', $company['id']);
             $order->update_meta_data('_arca_company_name', $company['name']);
             $order->update_meta_data('_arca_company_cuit', $company['cuit']);
+            $order->update_meta_data('_arca_environment', $company['environment'] ?? 'testing');
 
             $cbte_label = TaxResolver::get_cbte_label($cbte_tipo);
             $formatted_nro = sprintf('%04d-%08d', $result['pto_vta'], $result['cbte_nro']);
@@ -261,6 +262,7 @@ class InvoiceTrigger {
                 'importe'   => $amount,
                 'refund_id' => $refund_id,
                 'reason'    => $reason,
+                'environment' => $company['environment'] ?? 'testing',
             ];
             $existing_ncs[] = $nc_entry;
             $order->update_meta_data('_arca_credit_notes', $existing_ncs);

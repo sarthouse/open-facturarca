@@ -13,6 +13,7 @@ class OrderMetabox {
         add_action('admin_notices', [__CLASS__, 'render_order_notices']);
         add_action('admin_post_wc_arca_manual_issue', [__CLASS__, 'handle_manual_issue']);
         add_action('admin_post_wc_arca_manual_credit_note', [__CLASS__, 'handle_manual_credit_note']);
+        add_action('admin_post_wc_arca_reset_testing_invoice', [__CLASS__, 'handle_reset_testing_invoice']);
         add_action('admin_post_wc_arca_send_invoice_email', [__CLASS__, 'handle_send_invoice_email']);
         add_action('admin_post_wc_arca_send_slip_email', [__CLASS__, 'handle_send_slip_email']);
     }
@@ -80,6 +81,7 @@ class OrderMetabox {
         $pto_vta      = $order->get_meta('_arca_pto_vta');
         $cbte_tipo    = $order->get_meta('_arca_cbte_tipo');
         $company_name = $order->get_meta('_arca_company_name');
+        $arca_env     = $order->get_meta('_arca_environment') ?: 'testing';
         $credit_notes = $order->get_meta('_arca_credit_notes') ?: [];
 
         if ($cae) {
@@ -90,6 +92,11 @@ class OrderMetabox {
             $send_slip_nonce = wp_create_nonce('wc_arca_mail_slip_' . $order->get_id());
             ?>
             <div class="wc-arca-details" style="font-size: 13px;">
+                <?php if ($arca_env === 'testing'): ?>
+                    <div style="background: #fff3e0; color: #e65100; border: 1px solid #ffe082; padding: 6px 8px; border-radius: 4px; margin-bottom: 8px; font-size: 11px; font-weight: bold;">
+                        MODO HOMOLOGACIÓN / PRUEBA
+                    </div>
+                <?php endif; ?>
                 <p style="color: #2e7d32; font-weight: bold; margin-bottom: 5px;">Comprobante Autorizado</p>
                 <?php if ($company_name): ?>
                     <p style="margin-bottom: 5px;"><strong>Emisor:</strong> <?php echo esc_html($company_name); ?></p>
@@ -110,6 +117,16 @@ class OrderMetabox {
                     <a href="<?php echo esc_url($slip_url); ?>" class="button" target="_blank" style="text-align: center;">
                         Ver / Descargar Remito (PDF)
                     </a>
+                    <?php if ($arca_env === 'testing'): ?>
+                        <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" style="margin-top: 6px;">
+                            <input type="hidden" name="action" value="wc_arca_reset_testing_invoice">
+                            <input type="hidden" name="order_id" value="<?php echo esc_attr($order->get_id()); ?>">
+                            <?php wp_nonce_field('wc_arca_reset_nonce'); ?>
+                            <button type="submit" class="button" style="width: 100%; color: #d32f2f; border-color: #ef9a9a; font-size: 11.5px;" onclick="return confirm('¿Deseas desvincular este comprobante de prueba para poder refacturar el pedido? (Solo disponible para comprobantes de homologación)');">
+                                Refacturar / Desvincular prueba
+                            </button>
+                        </form>
+                    <?php endif; ?>
                 </div>
             </div>
 
@@ -295,6 +312,44 @@ class OrderMetabox {
 
         $result = InvoiceTrigger::process_credit_note($order_id, $amount, 0, $reason);
         self::redirect_back($order_id, $result);
+    }
+
+    public static function handle_reset_testing_invoice() {
+        if (!current_user_can('manage_woocommerce')) {
+            wp_die(__('No tienes permisos para realizar esta acción.', 'open-facturarca'));
+        }
+
+        check_admin_referer('wc_arca_reset_nonce');
+
+        $order_id = isset($_POST['order_id']) ? absint($_POST['order_id']) : 0;
+        $order = wc_get_order($order_id);
+        if (!$order) {
+            wp_die(__('Pedido no encontrado.', 'open-facturarca'));
+        }
+
+        // Seguridad: solo permitir resetear si fue emitido en testing o si no tiene CAE oficial de produccion
+        $arca_env = $order->get_meta('_arca_environment') ?: 'testing';
+        if ($arca_env === 'production') {
+            self::redirect_back($order_id, ['success' => false, 'message' => 'No se puede desvincular un comprobante fiscal emitido en entorno de Producción ante ARCA.']);
+        }
+
+        // Eliminar metadatos fiscales de prueba para habilitar refacturación
+        $order->delete_meta_data('_arca_cae');
+        $order->delete_meta_data('_arca_cae_vto');
+        $order->delete_meta_data('_arca_cbte_nro');
+        $order->delete_meta_data('_arca_pto_vta');
+        $order->delete_meta_data('_arca_cbte_tipo');
+        $order->delete_meta_data('_arca_cbte_fch');
+        $order->delete_meta_data('_arca_company_id');
+        $order->delete_meta_data('_arca_company_name');
+        $order->delete_meta_data('_arca_company_cuit');
+        $order->delete_meta_data('_arca_environment');
+        $order->delete_meta_data('_arca_credit_notes');
+        $order->save();
+
+        $order->add_order_note(__('Comprobante de prueba (Homologación) desvinculado por el administrador. El pedido queda listo para refacturar.', 'open-facturarca'));
+
+        self::redirect_back($order_id, ['success' => true, 'message' => 'Comprobante de prueba desvinculado con éxito. Ahora podés refacturar el pedido en Producción.']);
     }
 
     public static function handle_send_invoice_email() {
