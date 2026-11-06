@@ -25,10 +25,25 @@ class OrderMetabox {
         $msg    = isset($_GET['arca_msg']) ? urldecode($_GET['arca_msg']) : '';
 
         if ($notice === 'success') {
-            echo '<div class="notice notice-success is-dismissible"><p><strong>Open FacturARCA:</strong> ' . esc_html__('Comprobante emitido y autorizado con éxito por ARCA.', 'open-facturarca') . '</p></div>';
+            $text = $msg ?: __('Comprobante emitido y autorizado con éxito por ARCA.', 'open-facturarca');
+            echo '<div class="notice notice-success is-dismissible"><p><strong>Open FacturARCA:</strong> ' . esc_html($text) . '</p></div>';
         } elseif ($notice === 'error') {
             echo '<div class="notice notice-error is-dismissible"><p><strong>Open FacturARCA - Error al Facturar:</strong> ' . esc_html($msg ?: __('Ocurrió un error al procesar el comprobante.', 'open-facturarca')) . '</p></div>';
         }
+        ?>
+        <script>
+        (function() {
+            if (window.history && window.history.replaceState) {
+                var cleanUrl = new URL(window.location.href);
+                if (cleanUrl.searchParams.has('arca_notice')) {
+                    cleanUrl.searchParams.delete('arca_notice');
+                    cleanUrl.searchParams.delete('arca_msg');
+                    window.history.replaceState({}, document.title, cleanUrl.toString());
+                }
+            }
+        })();
+        </script>
+        <?php
     }
 
     public static function register_metabox() {
@@ -65,14 +80,29 @@ class OrderMetabox {
             $notice = sanitize_text_field($_GET['arca_notice']);
             $msg    = isset($_GET['arca_msg']) ? urldecode($_GET['arca_msg']) : '';
             if ($notice === 'success') {
+                $text = $msg ?: __('Comprobante emitido y autorizado con éxito por ARCA.', 'open-facturarca');
                 echo '<div style="background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; padding: 8px 10px; border-radius: 4px; margin-bottom: 12px; font-size: 12.5px;">';
-                echo '<strong>Exito:</strong> ' . esc_html__('Comprobante emitido y autorizado con éxito por ARCA.', 'open-facturarca');
+                echo '<strong>Exito:</strong> ' . esc_html($text);
                 echo '</div>';
             } elseif ($notice === 'error') {
                 echo '<div style="background: #ffebee; color: #c62828; border: 1px solid #ef9a9a; padding: 8px 10px; border-radius: 4px; margin-bottom: 12px; font-size: 12.5px;">';
                 echo '<strong>Error al facturar:</strong><br>' . esc_html($msg ?: __('Ocurrió un error al procesar el comprobante.', 'open-facturarca'));
                 echo '</div>';
             }
+
+            // Limpiar los parámetros de la URL con la History API de JavaScript para que al refrescar no reaparezca el aviso
+            ?>
+            <script>
+            (function() {
+                if (window.history && window.history.replaceState) {
+                    var cleanUrl = new URL(window.location.href);
+                    cleanUrl.searchParams.delete('arca_notice');
+                    cleanUrl.searchParams.delete('arca_msg');
+                    window.history.replaceState({}, document.title, cleanUrl.toString());
+                }
+            })();
+            </script>
+            <?php
         }
 
         $cae          = $order->get_meta('_arca_cae');
@@ -80,6 +110,7 @@ class OrderMetabox {
         $cbte_nro     = $order->get_meta('_arca_cbte_nro');
         $pto_vta      = $order->get_meta('_arca_pto_vta');
         $cbte_tipo    = $order->get_meta('_arca_cbte_tipo');
+        $cbte_fch     = $order->get_meta('_arca_cbte_fch');
         $company_name = $order->get_meta('_arca_company_name');
         $arca_env     = $order->get_meta('_arca_environment') ?: 'testing';
         $credit_notes = $order->get_meta('_arca_credit_notes') ?: [];
@@ -87,6 +118,30 @@ class OrderMetabox {
         if ($cae) {
             $label = TaxResolver::get_cbte_label($cbte_tipo);
             $formatted_nro = sprintf('%04d-%08d', $pto_vta, $cbte_nro);
+            
+            // Formatear Fecha de Emisión (YYYYMMDD -> DD/MM/YYYY)
+            $cbte_fch_fmt = '-';
+            if (!empty($cbte_fch)) {
+                $fch_clean = preg_replace('/[^0-9]/', '', (string)$cbte_fch);
+                if (strlen($fch_clean) === 8) {
+                    $cbte_fch_fmt = substr($fch_clean, 6, 2) . '/' . substr($fch_clean, 4, 2) . '/' . substr($fch_clean, 0, 4);
+                } else {
+                    $cbte_fch_fmt = date('d/m/Y', strtotime($cbte_fch));
+                }
+            } elseif ($order->get_date_created()) {
+                $cbte_fch_fmt = $order->get_date_created()->date('d/m/Y');
+            }
+
+            // Formatear Fecha de Vencimiento de CAE (YYYYMMDD -> DD/MM/YYYY)
+            $cae_vto_fmt = '-';
+            if (!empty($cae_vto)) {
+                $cae_vto_clean = preg_replace('/[^0-9]/', '', (string)$cae_vto);
+                if (strlen($cae_vto_clean) === 8) {
+                    $cae_vto_fmt = substr($cae_vto_clean, 6, 2) . '/' . substr($cae_vto_clean, 4, 2) . '/' . substr($cae_vto_clean, 0, 4);
+                } else {
+                    $cae_vto_fmt = date('d/m/Y', strtotime($cae_vto));
+                }
+            }
             $slip_url = \WcArca\Invoices\PackingSlipHandler::get_download_url($order->get_id());
             $send_inv_nonce = wp_create_nonce('wc_arca_mail_inv_' . $order->get_id());
             $send_slip_nonce = wp_create_nonce('wc_arca_mail_slip_' . $order->get_id());
@@ -103,8 +158,9 @@ class OrderMetabox {
                 <?php endif; ?>
                 <p><strong>Tipo:</strong> <?php echo esc_html($label); ?><br>
                 <strong>Número:</strong> <?php echo esc_html($formatted_nro); ?><br>
+                <strong>Fecha Emisión:</strong> <?php echo esc_html($cbte_fch_fmt); ?><br>
                 <strong>CAE:</strong> <?php echo esc_html($cae); ?><br>
-                <strong>Vto CAE:</strong> <?php echo esc_html($cae_vto); ?></p>
+                <strong>Vto CAE:</strong> <?php echo esc_html($cae_vto_fmt); ?></p>
 
                 <!-- Botones de Acción de Factura y Remito -->
                 <div style="margin-top: 12px; display: flex; flex-direction: column; gap: 6px;">
@@ -118,17 +174,38 @@ class OrderMetabox {
                         Ver / Descargar Remito (PDF)
                     </a>
                     <?php if ($arca_env === 'testing'): ?>
-                        <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" style="margin-top: 6px;">
-                            <input type="hidden" name="action" value="wc_arca_reset_testing_invoice">
-                            <input type="hidden" name="order_id" value="<?php echo esc_attr($order->get_id()); ?>">
-                            <?php wp_nonce_field('wc_arca_reset_nonce'); ?>
-                            <button type="submit" class="button" style="width: 100%; color: #d32f2f; border-color: #ef9a9a; font-size: 11.5px;" onclick="return confirm('¿Deseas desvincular este comprobante de prueba para poder refacturar el pedido? (Solo disponible para comprobantes de homologación)');">
-                                Refacturar / Desvincular prueba
-                            </button>
-                        </form>
+                        <button type="button" class="button" style="width: 100%; color: #d32f2f; border-color: #ef9a9a; font-size: 11.5px; margin-top: 4px;" onclick="wcArcaResetTesting(<?php echo esc_attr($order->get_id()); ?>, '<?php echo esc_attr(wp_create_nonce('wc_arca_reset_nonce')); ?>');">
+                            Refacturar / Desvincular prueba
+                        </button>
                     <?php endif; ?>
                 </div>
             </div>
+
+            <script>
+            function wcArcaResetTesting(orderId, nonce) {
+                if (!confirm('¿Deseas desvincular este comprobante de prueba para poder refacturar el pedido? (Solo disponible para comprobantes de homologación)')) {
+                    return;
+                }
+                var form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '<?php echo esc_url(admin_url('admin-post.php')); ?>';
+
+                var fAction = document.createElement('input');
+                fAction.type = 'hidden'; fAction.name = 'action'; fAction.value = 'wc_arca_reset_testing_invoice';
+                form.appendChild(fAction);
+
+                var fOrder = document.createElement('input');
+                fOrder.type = 'hidden'; fOrder.name = 'order_id'; fOrder.value = orderId;
+                form.appendChild(fOrder);
+
+                var fNonce = document.createElement('input');
+                fNonce.type = 'hidden'; fNonce.name = '_wpnonce'; fNonce.value = nonce;
+                form.appendChild(fNonce);
+
+                document.body.appendChild(form);
+                form.submit();
+            }
+            </script>
 
             <?php if (!empty($credit_notes)): ?>
                 <div style="border-top: 1px dashed #ccc; padding-top: 10px; margin-top: 10px;">
@@ -138,10 +215,38 @@ class OrderMetabox {
                             $nc_label = TaxResolver::get_cbte_label($nc['cbte_tipo']);
                             $nc_nro = sprintf('%04d-%08d', $nc['pto_vta'], $nc['cbte_nro']);
                             $nc_url = \WcArca\Invoices\PdfHandler::get_credit_note_download_url($order->get_id(), $nc_idx);
+
+                            // Formatear Fecha de Emisión de NC
+                            $nc_fch = $nc['cbte_fch'] ?? '';
+                            $nc_fch_fmt = '-';
+                            if (!empty($nc_fch)) {
+                                $nc_fch_clean = preg_replace('/[^0-9]/', '', (string)$nc_fch);
+                                if (strlen($nc_fch_clean) === 8) {
+                                    $nc_fch_fmt = substr($nc_fch_clean, 6, 2) . '/' . substr($nc_fch_clean, 4, 2) . '/' . substr($nc_fch_clean, 0, 4);
+                                } else {
+                                    $nc_fch_fmt = date('d/m/Y', strtotime($nc_fch));
+                                }
+                            }
+
+                            // Formatear Vto CAE de NC
+                            $nc_cae_vto = $nc['cae_vto'] ?? '';
+                            $nc_vto_fmt = '-';
+                            if (!empty($nc_cae_vto)) {
+                                $nc_vto_clean = preg_replace('/[^0-9]/', '', (string)$nc_cae_vto);
+                                if (strlen($nc_vto_clean) === 8) {
+                                    $nc_vto_fmt = substr($nc_vto_clean, 6, 2) . '/' . substr($nc_vto_clean, 4, 2) . '/' . substr($nc_vto_clean, 0, 4);
+                                } else {
+                                    $nc_vto_fmt = date('d/m/Y', strtotime($nc_cae_vto));
+                                }
+                            }
                         ?>
                             <li style="margin-bottom: 6px; padding-bottom: 6px; border-bottom: 1px dotted #e0e0e0;">
                                 <strong><?php echo esc_html($nc_label); ?> <?php echo esc_html($nc_nro); ?></strong><br>
-                                Importe: $<?php echo number_format($nc['importe'], 2, ',', '.'); ?> | CAE: <?php echo esc_html($nc['cae']); ?><br>
+                                <?php if ($nc_fch_fmt !== '-'): ?>
+                                    Fecha: <?php echo esc_html($nc_fch_fmt); ?> | 
+                                <?php endif; ?>
+                                Importe: $<?php echo number_format($nc['importe'], 2, ',', '.'); ?><br>
+                                CAE: <?php echo esc_html($nc['cae']); ?> (Vto: <?php echo esc_html($nc_vto_fmt); ?>)<br>
                                 <a href="<?php echo esc_url($nc_url); ?>" class="button button-small" target="_blank" style="margin-top: 3px;">
                                     Descargar Nota de Crédito (PDF)
                                 </a>
@@ -377,7 +482,11 @@ class OrderMetabox {
         }
 
         if ($result['success']) {
-            wp_redirect(add_query_arg('arca_notice', 'success', $redirect_url));
+            $args = ['arca_notice' => 'success'];
+            if (!empty($result['message'])) {
+                $args['arca_msg'] = urlencode($result['message']);
+            }
+            wp_redirect(add_query_arg($args, $redirect_url));
         } else {
             wp_redirect(add_query_arg(['arca_notice' => 'error', 'arca_msg' => urlencode($result['message'])], $redirect_url));
         }

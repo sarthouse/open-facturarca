@@ -162,6 +162,22 @@ class BulkActions {
                 $errors
             );
             echo '<div class="notice notice-success is-dismissible"><p><strong>Open FacturARCA:</strong> ' . esc_html($msg) . '</p></div>';
+            ?>
+            <script>
+            (function() {
+                if (window.history && window.history.replaceState) {
+                    var cleanUrl = new URL(window.location.href);
+                    if (cleanUrl.searchParams.has('arca_bulk_processed')) {
+                        cleanUrl.searchParams.delete('arca_bulk_processed');
+                        cleanUrl.searchParams.delete('arca_issued');
+                        cleanUrl.searchParams.delete('arca_skipped');
+                        cleanUrl.searchParams.delete('arca_errors');
+                        window.history.replaceState({}, document.title, cleanUrl.toString());
+                    }
+                }
+            })();
+            </script>
+            <?php
         }
     }
 }

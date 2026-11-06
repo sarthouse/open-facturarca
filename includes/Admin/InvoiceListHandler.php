@@ -58,8 +58,34 @@ class InvoiceListHandler {
             $cbte_nro  = (int) $order->get_meta('_arca_cbte_nro');
             $cae       = $order->get_meta('_arca_cae');
             $cae_vto   = $order->get_meta('_arca_cae_vto');
-            $date      = $order->get_date_created() ? $order->get_date_created()->date('Y-m-d H:i') : '';
+            $cbte_fch  = $order->get_meta('_arca_cbte_fch');
+            $arca_env  = $order->get_meta('_arca_environment') ?: 'testing';
+            $raw_order_date = $order->get_date_created() ? $order->get_date_created()->date('Y-m-d H:i') : '';
             $total     = (float) $order->get_total();
+
+            // Formatear Fecha de Emisión de la Factura (DD/MM/YYYY)
+            $date_fmt = '';
+            if (!empty($cbte_fch)) {
+                $fch_clean = preg_replace('/[^0-9]/', '', (string)$cbte_fch);
+                if (strlen($fch_clean) === 8) {
+                    $date_fmt = substr($fch_clean, 6, 2) . '/' . substr($fch_clean, 4, 2) . '/' . substr($fch_clean, 0, 4);
+                } else {
+                    $date_fmt = date('d/m/Y', strtotime($cbte_fch));
+                }
+            } elseif ($order->get_date_created()) {
+                $date_fmt = $order->get_date_created()->date('d/m/Y');
+            }
+
+            // Formatear Fecha de Vencimiento de CAE (DD/MM/YYYY)
+            $cae_vto_fmt = '-';
+            if (!empty($cae_vto)) {
+                $cae_vto_clean = preg_replace('/[^0-9]/', '', (string)$cae_vto);
+                if (strlen($cae_vto_clean) === 8) {
+                    $cae_vto_fmt = substr($cae_vto_clean, 6, 2) . '/' . substr($cae_vto_clean, 4, 2) . '/' . substr($cae_vto_clean, 0, 4);
+                } else {
+                    $cae_vto_fmt = date('d/m/Y', strtotime($cae_vto));
+                }
+            }
 
             // Cálculo de IVA según tipo de comprobante
             // Monotributo (Factura C / NC C) no discrimina IVA (IVA = $0)
@@ -76,6 +102,7 @@ class InvoiceListHandler {
                 'order_id'      => $order_id,
                 'company_id'    => $company_id,
                 'company_name'  => $company_name,
+                'environment'   => $arca_env,
                 'is_nc'         => false,
                 'nc_index'      => null,
                 'cbte_tipo'     => $cbte_tipo,
@@ -86,10 +113,11 @@ class InvoiceListHandler {
                 'total'         => $total,
                 'iva'           => $iva,
                 'cae'           => $cae,
-                'cae_vto'       => $cae_vto,
+                'cae_vto'       => $cae_vto_fmt,
                 'doc_nro'       => $doc_nro,
                 'customer_name' => $customer_name,
-                'date'          => $date,
+                'date'          => $date_fmt ?: $raw_order_date,
+                'raw_date'      => $raw_order_date,
                 'download_url'  => PdfHandler::get_download_url($order_id),
             ];
 
@@ -103,7 +131,35 @@ class InvoiceListHandler {
                     $nc_cae       = $nc['cae'] ?? '';
                     $nc_cae_vto   = $nc['cae_vto'] ?? '';
                     $nc_total     = (float) ($nc['importe'] ?? 0);
-                    $nc_date      = !empty($nc['fecha']) ? $nc['fecha'] : $date;
+
+                    // Formatear fecha de la Nota de Crédito
+                    $nc_date_raw  = !empty($nc['cbte_fch']) ? $nc['cbte_fch'] : (!empty($nc['fecha']) ? $nc['fecha'] : '');
+                    $nc_raw_date  = $raw_order_date;
+                    if (!empty($nc_date_raw)) {
+                        $nc_clean = preg_replace('/[^0-9]/', '', (string)$nc_date_raw);
+                        if (strlen($nc_clean) === 8) {
+                            $nc_date = substr($nc_clean, 6, 2) . '/' . substr($nc_clean, 4, 2) . '/' . substr($nc_clean, 0, 4);
+                            $nc_raw_date = substr($nc_clean, 0, 4) . '-' . substr($nc_clean, 4, 2) . '-' . substr($nc_clean, 6, 2);
+                        } else {
+                            $nc_date = date('d/m/Y', strtotime($nc_date_raw));
+                            $nc_raw_date = date('Y-m-d', strtotime($nc_date_raw));
+                        }
+                    } else {
+                        $nc_date = $date_fmt ?: $raw_order_date;
+                    }
+
+                    // Formatear Vto CAE de la Nota de Crédito
+                    $nc_cae_vto_fmt = '-';
+                    if (!empty($nc_cae_vto)) {
+                        $nc_vto_clean = preg_replace('/[^0-9]/', '', (string)$nc_cae_vto);
+                        if (strlen($nc_vto_clean) === 8) {
+                            $nc_cae_vto_fmt = substr($nc_vto_clean, 6, 2) . '/' . substr($nc_vto_clean, 4, 2) . '/' . substr($nc_vto_clean, 0, 4);
+                        } else {
+                            $nc_cae_vto_fmt = date('d/m/Y', strtotime($nc_cae_vto));
+                        }
+                    } else {
+                        $nc_cae_vto_fmt = $nc_cae_vto;
+                    }
 
                     // IVA de la Nota de Crédito
                     if ($nc_cbte_tipo === 13) {
@@ -117,6 +173,7 @@ class InvoiceListHandler {
                         'order_id'      => $order_id,
                         'company_id'    => $company_id,
                         'company_name'  => $company_name,
+                        'environment'   => $nc['environment'] ?? $arca_env,
                         'is_nc'         => true,
                         'nc_index'      => $nc_idx,
                         'cbte_tipo'     => $nc_cbte_tipo,
@@ -127,10 +184,11 @@ class InvoiceListHandler {
                         'total'         => $nc_total,
                         'iva'           => $nc_iva,
                         'cae'           => $nc_cae,
-                        'cae_vto'       => $nc_cae_vto,
+                        'cae_vto'       => $nc_cae_vto_fmt,
                         'doc_nro'       => $doc_nro,
                         'customer_name' => $customer_name,
                         'date'          => $nc_date,
+                        'raw_date'      => $nc_raw_date,
                         'download_url'  => PdfHandler::get_credit_note_download_url($order_id, $nc_idx),
                     ];
                 }
@@ -139,18 +197,18 @@ class InvoiceListHandler {
 
         // Ordenar por fecha descendente
         usort($items, function($a, $b) {
-            return strcmp($b['date'], $a['date']);
+            return strcmp($b['raw_date'], $a['raw_date']);
         });
 
         // Filtrar por fecha exacta de NC si la NC tiene fecha distinta al pedido
         if (!empty($start_date)) {
             $items = array_filter($items, function($it) use ($start_date) {
-                return substr($it['date'], 0, 10) >= $start_date;
+                return substr($it['raw_date'], 0, 10) >= $start_date;
             });
         }
         if (!empty($end_date)) {
             $items = array_filter($items, function($it) use ($end_date) {
-                return substr($it['date'], 0, 10) <= $end_date;
+                return substr($it['raw_date'], 0, 10) <= $end_date;
             });
         }
 
@@ -292,22 +350,23 @@ class InvoiceListHandler {
             <table class="wp-list-table widefat fixed striped table-view-list" style="border: 1px solid #ccd0d4;">
                 <thead>
                     <tr>
-                        <th scope="col" style="width: 110px;">Fecha</th>
+                        <th scope="col" style="width: 105px;">Fecha</th>
                         <th scope="col" style="width: 140px;">Comprobante</th>
                         <th scope="col" style="width: 120px;">Número</th>
                         <th scope="col" style="width: 80px;">Pedido</th>
                         <th scope="col">Cliente / Receptor</th>
-                        <th scope="col" style="width: 120px;">CUIT / DNI</th>
-                        <th scope="col" style="width: 105px; text-align: right;">IVA</th>
-                        <th scope="col" style="width: 110px; text-align: right;">Total</th>
+                        <th scope="col" style="width: 110px;">CUIT / DNI</th>
+                        <th scope="col" style="width: 95px; text-align: right;">IVA</th>
+                        <th scope="col" style="width: 105px; text-align: right;">Total</th>
                         <th scope="col" style="width: 140px;">CAE / Vto</th>
-                        <th scope="col" style="width: 110px; text-align: center;">Acciones</th>
+                        <th scope="col" style="width: 95px; text-align: center;">Entorno</th>
+                        <th scope="col" style="width: 105px; text-align: center;">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if (empty($data['items'])): ?>
                         <tr>
-                            <td colspan="10" style="text-align: center; padding: 25px; color: #666;">
+                            <td colspan="11" style="text-align: center; padding: 25px; color: #666;">
                                 No se encontraron comprobantes emitidos con los criterios especificados.
                             </td>
                         </tr>
@@ -318,6 +377,7 @@ class InvoiceListHandler {
                             $badge_bg = $is_nc ? '#ffebee' : '#e8f5e9';
                             $badge_color = $is_nc ? '#c62828' : '#2e7d32';
                             $badge_border = $is_nc ? '#ef9a9a' : '#a5d6a7';
+                            $is_prod = ($item['environment'] ?? 'testing') === 'production';
                         ?>
                             <tr>
                                 <td style="font-size: 12px; color: #555;">
@@ -356,6 +416,17 @@ class InvoiceListHandler {
                                 <td style="font-size: 11px; line-height: 1.3;">
                                     <strong style="color: #2e7d32;">CAE:</strong> <?php echo esc_html($item['cae']); ?><br>
                                     <span style="color: #666;">Vto: <?php echo esc_html($item['cae_vto']); ?></span>
+                                </td>
+                                <td style="text-align: center;">
+                                    <?php if ($is_prod): ?>
+                                        <span style="display: inline-block; padding: 2px 6px; border-radius: 3px; font-weight: 600; font-size: 10px; background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7;">
+                                            PRODUCCIÓN
+                                        </span>
+                                    <?php else: ?>
+                                        <span style="display: inline-block; padding: 2px 6px; border-radius: 3px; font-weight: 600; font-size: 10px; background: #fff3e0; color: #e65100; border: 1px solid #ffe082;">
+                                            PRUEBA
+                                        </span>
+                                    <?php endif; ?>
                                 </td>
                                 <td style="text-align: center;">
                                     <a href="<?php echo esc_url($item['download_url']); ?>" class="button button-small" target="_blank" title="Descargar PDF">

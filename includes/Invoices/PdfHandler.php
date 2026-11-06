@@ -229,6 +229,17 @@ class PdfHandler {
         $cond_cliente = TaxResolver::get_tax_condition_label($raw_client_tax_cond);
         $is_testing = ($company['environment'] ?? 'testing') === 'testing';
 
+        $cae_vto_fmt = '-';
+        if (!empty($cae_vto)) {
+            $cae_vto_clean = preg_replace('/[^0-9]/', '', (string)$cae_vto);
+            if (strlen($cae_vto_clean) === 8) {
+                // Formato YYYYMMDD de ARCA
+                $cae_vto_fmt = substr($cae_vto_clean, 6, 2) . '/' . substr($cae_vto_clean, 4, 2) . '/' . substr($cae_vto_clean, 0, 4);
+            } else {
+                $cae_vto_fmt = date('d/m/Y', strtotime($cae_vto));
+            }
+        }
+
         $data = [
             'order'            => $order,
             'company'          => $company,
@@ -251,7 +262,7 @@ class PdfHandler {
             'localidad'        => $localidad,
             'provincia'        => $provincia,
             'cae'              => $cae,
-            'cae_vto_fmt'      => !empty($cae_vto) ? date('d/m/Y', strtotime($cae_vto)) : '-',
+            'cae_vto_fmt'      => $cae_vto_fmt,
             'subtotal'         => $subtotal,
             'neto'             => $neto,
             'iva_total'        => $iva_total,
