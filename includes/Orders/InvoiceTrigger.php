@@ -123,8 +123,10 @@ class InvoiceTrigger {
                 }
             }
 
+            $cond_iva_receptor_id = TaxResolver::get_receiver_iva_id($receiver_condition);
+
             $client = new WsfeClient($company);
-            $result = $client->authorize_invoice($cbte_tipo, $doc_tipo, $clean_doc, $total, $neto, $iva_array);
+            $result = $client->authorize_invoice($cbte_tipo, $doc_tipo, $clean_doc, $total, $neto, $iva_array, [], $cond_iva_receptor_id);
 
             $order->update_meta_data('_arca_cae', $result['cae']);
             $order->update_meta_data('_arca_cae_vto', $result['cae_vto']);
@@ -192,20 +194,27 @@ class InvoiceTrigger {
 
             $doc_nro = $order->get_meta('_billing_dni') 
                 ?: ($order->get_meta('billing_dni') ?: ($order->get_meta('_billing_doc_number') ?: '0'));
-            $clean_doc = preg_replace('/[^0-9]/', '', $doc_nro);
-            $doc_tipo  = (strlen($clean_doc) === 11) ? 80 : 96;
+            $clean_doc = preg_replace('/[^0-9]/', '', (string)$doc_nro);
+            if (empty($clean_doc) || $clean_doc === '0') {
+                $doc_tipo  = 99;
+                $clean_doc = '0';
+            } else {
+                $doc_tipo  = (strlen($clean_doc) === 11) ? 80 : 96;
+            }
 
             $cbte_tipo = TaxResolver::resolve_cbte_tipo($issuer_condition, $receiver_condition, 'credit_note');
 
             $orig_cbte_tipo = (int)$order->get_meta('_arca_cbte_tipo');
             $orig_pto_vta   = (int)$order->get_meta('_arca_pto_vta');
             $orig_cbte_nro  = (int)$order->get_meta('_arca_cbte_nro');
+            $orig_cbte_fch  = $order->get_meta('_arca_cbte_fch') ?: date('Ymd');
 
             $cbtes_asoc = [
                 'Tipo'    => $orig_cbte_tipo,
                 'PtoVta'  => $orig_pto_vta,
                 'Nro'     => $orig_cbte_nro,
                 'Cuit'    => (float) $company['cuit'],
+                'CbteFch' => $orig_cbte_fch,
             ];
 
             $total_factura = (float)$order->get_total();
@@ -236,8 +245,10 @@ class InvoiceTrigger {
                 }
             }
 
+            $cond_iva_receptor_id = TaxResolver::get_receiver_iva_id($receiver_condition);
+
             $client = new WsfeClient($company);
-            $result = $client->authorize_invoice($cbte_tipo, $doc_tipo, $clean_doc, $amount, $neto, $iva_array, $cbtes_asoc);
+            $result = $client->authorize_invoice($cbte_tipo, $doc_tipo, $clean_doc, $amount, $neto, $iva_array, $cbtes_asoc, $cond_iva_receptor_id);
 
             $existing_ncs = $order->get_meta('_arca_credit_notes') ?: [];
             $nc_entry = [

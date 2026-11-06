@@ -69,5 +69,34 @@ class TaxResolver {
 
         return $labels[$condition_slug] ?? ucfirst(str_replace('_', ' ', (string)$condition_slug));
     }
+
+    /**
+     * Devuelve el ID numérico oficial de ARCA / AFIP para CondicionIvaReceptorId (RG 5616)
+     *
+     * Tabla oficial FEParamGetCondicionIvaReceptor:
+     * 1  = IVA Responsable Inscripto
+     * 4  = IVA Sujeto Exento
+     * 5  = Consumidor Final
+     * 6  = Responsable Monotributo
+     * 7  = Sujeto No Categorizado
+     * 8  = Proveedor del Exterior
+     * 9  = Cliente del Exterior
+     * 10 = IVA Liberado - Ley Nº 19.640
+     * 13 = Monotributista Social
+     * 15 = IVA No Alcanzado
+     * 16 = Monotributo Trabajador Independiente Promovido
+     */
+    public static function get_receiver_iva_id($condition_slug) {
+        $map = [
+            'responsable_inscripto' => 1,
+            'exento'                => 4,
+            'consumidor_final'      => 5,
+            'monotributo'           => 6,
+            'no_categorizado'       => 7,
+            'no_alcanzado'          => 15,
+        ];
+
+        return $map[$condition_slug] ?? 5; // Por defecto 5 (Consumidor Final)
+    }
 }
 

@@ -23,6 +23,7 @@ class WsfeClient {
             'soap_version' => SOAP_1_2,
             'trace'        => 1,
             'exceptions'   => 1,
+            'cache_wsdl'   => WSDL_CACHE_NONE,
         ]);
     }
 
@@ -49,7 +50,7 @@ class WsfeClient {
         return 0;
     }
 
-    public function authorize_invoice($cbte_tipo, $doc_tipo, $doc_nro, $total, $neto = 0, $iva_array = [], $cbtes_asoc = []) {
+    public function authorize_invoice($cbte_tipo, $doc_tipo, $doc_nro, $total, $neto = 0, $iva_array = [], $cbtes_asoc = [], $condicion_iva_receptor_id = 5) {
         $auth = $this->auth_service->get_access_ticket('wsfe');
         $client = $this->get_soap_client();
 
@@ -59,18 +60,19 @@ class WsfeClient {
         $pto_vta  = (int) $this->company['pto_vta'];
 
         $req = [
-            'Concepto'   => 1,
-            'DocTipo'    => (int)$doc_tipo,
-            'DocNro'     => (float)$doc_nro,
-            'CbteDesde'  => $next_nro,
-            'CbteHasta'  => $next_nro,
-            'CbteFch'    => $cbte_fch,
-            'ImpTotal'   => round($total, 2),
-            'ImpTotConc' => 0,
-            'ImpOpEx'    => 0,
-            'ImpTrib'    => 0,
-            'MonId'      => 'PES',
-            'MonCotiz'   => 1,
+            'Concepto'               => 1,
+            'DocTipo'                => (int)$doc_tipo,
+            'DocNro'                 => (float)$doc_nro,
+            'CbteDesde'              => $next_nro,
+            'CbteHasta'              => $next_nro,
+            'CbteFch'                => $cbte_fch,
+            'ImpTotal'               => round($total, 2),
+            'ImpTotConc'             => 0,
+            'ImpOpEx'                => 0,
+            'ImpTrib'                => 0,
+            'MonId'                  => 'PES',
+            'MonCotiz'               => 1,
+            'CondicionIVAReceptorId' => (int)$condicion_iva_receptor_id,
         ];
 
         if ($cbte_tipo === TaxResolver::CBTE_FACTURA_C || $cbte_tipo === TaxResolver::CBTE_NOTA_CREDITO_C) {
